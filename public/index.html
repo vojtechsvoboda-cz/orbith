@@ -69,9 +69,9 @@ section{scroll-margin-top:90px}
 /* sliding indicator with a little squash-and-settle (menu + all switchers) */
 .ind{position:absolute;z-index:0;top:4px;bottom:4px;left:0;right:100%;border-radius:99px;opacity:0;pointer-events:none;
   background:rgba(160,195,255,.13);box-shadow:inset 0 0 0 1px var(--edge-hi);
-  transition:left .4s var(--spring),right .4s var(--spring),opacity .25s}
-.ind.rt{transition-delay:.04s,0s,0s}
-.ind.lt{transition-delay:0s,.04s,0s}
+  transition:left .5s cubic-bezier(.22,1,.36,1),right .5s cubic-bezier(.22,1,.36,1),opacity .25s}
+.ind.rt{transition-delay:.05s,0s,0s}
+.ind.lt{transition-delay:0s,.05s,0s}
 
 /* TOP: invisible fade into blur under the menu */
 .topblur{position:fixed;left:0;right:0;top:0;height:calc(env(safe-area-inset-top,0px) + 108px);z-index:39;pointer-events:none;
@@ -118,12 +118,16 @@ section{scroll-margin-top:90px}
 
 /* upcoming rail */
 .up-head{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:12px}
-.up-head .lbl{color:var(--soft);padding:9px 14px;border-radius:99px}
+.up-head .lbl{color:var(--soft);padding:9px 14px;border-radius:99px;transition:color .2s}
+.up-head .uplink:hover{color:var(--ice)}
 .arrows{display:flex;gap:6px}
 .arrows button{width:38px;height:38px;border-radius:50%;cursor:pointer;display:grid;place-items:center}
 .arrows button:disabled{opacity:.35;cursor:default}
 .rail{display:grid;grid-auto-flow:column;grid-auto-columns:calc((100% - 36px)/4);gap:12px;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;overscroll-behavior-x:contain}
 .rail::-webkit-scrollbar{display:none}
+@media (hover:hover){.rail{cursor:grab}}
+.rail.dragging{scroll-snap-type:none;cursor:grabbing;user-select:none}
+.rail.dragging .gig{pointer-events:none}
 @media (max-width:1100px){.rail{grid-auto-columns:calc((100% - 24px)/3)}}
 @media (max-width:820px){.rail{grid-auto-columns:calc((100% - 12px)/2)}}
 @media (max-width:520px){.rail{grid-auto-columns:82%}}
@@ -163,8 +167,7 @@ section{scroll-margin-top:90px}
 .cities{display:flex;gap:6px;flex-wrap:wrap}
 .cities .chip{cursor:pointer}
 .cities .chip[aria-pressed="true"]{background:rgba(160,195,255,.13);border-color:var(--edge-hi)}
-.cities .chip:disabled{opacity:.32;cursor:default}
-.cities .chip:disabled::before,.cities .chip:disabled::after{display:none}
+
 .list{background:linear-gradient(90deg,transparent,var(--edge) 4%,var(--edge) 96%,transparent) top/100% 1px no-repeat}
 .row{display:grid;grid-template-columns:150px minmax(0,1fr) auto 40px;align-items:center;gap:20px;width:100%;padding:20px 12px;border:0;background:linear-gradient(90deg,transparent,var(--edge) 4%,var(--edge) 96%,transparent) bottom/100% 1px no-repeat;text-align:left;cursor:pointer;border-radius:12px}
 .row .when>b{font-family:var(--f-display);font-weight:400;font-size:22px;line-height:1;letter-spacing:.02em;font-variant-numeric:tabular-nums}
@@ -225,7 +228,7 @@ section{scroll-margin-top:90px}
 .now .art .cap{position:absolute;left:16px;right:16px;bottom:14px;z-index:1;display:grid;gap:4px}
 .now .art .cap b{font-size:18px;line-height:1.25}
 .now .art .cap span{font-family:var(--f-display);font-size:10px;letter-spacing:.14em;color:var(--soft);text-transform:uppercase}
-.now .frame{border-radius:14px;overflow:hidden;isolation:isolate;transform:translateZ(0);-webkit-mask-image:-webkit-radial-gradient(white,black)}
+.now .frame{height:374px;border-radius:14px;overflow:hidden;isolation:isolate;transform:translateZ(0);-webkit-mask-image:-webkit-radial-gradient(white,black)}
 .now iframe{width:100%;height:400px;border:0;display:block;background:#000}
 .now .meta{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
 .now .note{font-size:13px;color:var(--muted)}
@@ -246,8 +249,20 @@ section{scroll-margin-top:90px}
 @keyframes eq{0%{transform:scaleY(.25)}100%{transform:scaleY(1)}}
 .item.on{border-color:var(--edge-hi);background:rgba(160,195,255,.06)}
 .item.on .st{color:var(--glow)}
-.item .nx{position:absolute;left:12px;right:12px;bottom:3px;height:2px;border-radius:2px;background:var(--glow);opacity:.75;transform-origin:left;transform:scaleX(0)}
-@media (max-width:860px){.sc{grid-template-columns:1fr}.sets{max-height:none}}
+.item .th{position:relative;flex:none;border-radius:9px;overflow:hidden}
+.item .th img{display:block}
+.item .pb{position:absolute;inset:0;display:grid;place-items:center;background:rgba(4,6,11,.45);color:#fff;opacity:0;transition:opacity .25s}
+.item .pb svg{width:20px;height:20px;filter:drop-shadow(0 2px 6px rgba(0,0,0,.6))}
+.item:hover .pb,.item.on .pb{opacity:1}
+.item.on.playing .pb{background:rgba(4,6,11,.3)}
+.item .pg{position:absolute;left:12px;right:12px;bottom:4px;height:3px;border-radius:3px;background:rgba(160,195,255,.12);overflow:hidden;opacity:0;transition:opacity .3s}
+.item.on .pg{opacity:1}
+.item .pg i{display:block;height:100%;width:0;border-radius:3px;background:var(--glow)}
+.more-sets{display:none}
+@media (max-width:860px){.sc{grid-template-columns:1fr}
+  .sets,.sets.mid,.sets.end{max-height:none;overflow:visible;overscroll-behavior:auto;-webkit-mask-image:none;mask-image:none}
+  .sets.short .item:nth-child(n+6){display:none}
+  .more-sets{display:inline-flex;justify-self:center;margin-top:6px}}
 .spot{max-width:760px;display:grid;gap:14px}
 .spot iframe{width:100%;height:352px;border:0;border-radius:16px;display:block}
 .fallback{padding:28px;display:grid;gap:14px;justify-items:start;border-radius:22px}
@@ -385,6 +400,7 @@ input[type=range]:active::-webkit-slider-thumb{box-shadow:0 0 0 10px rgba(156,20
 .hub a svg.i{width:26px;height:26px}
 .hub a b{display:block;font-weight:600}
 .hub a small{display:block;font-family:var(--f-display);font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hub a .go svg.i{width:18px;height:18px}
 .hub a:hover .go{background:var(--ice);color:#05070d;border-color:var(--ice)}
 @media (max-width:760px){.hub-grid{grid-template-columns:1fr}}
 footer{border-top:1px solid var(--edge);margin-top:clamp(50px,6vw,80px);padding-block:30px calc(30px + env(safe-area-inset-bottom,0px))}
@@ -457,7 +473,7 @@ footer a:hover{color:var(--ice)}
     </div>
     <div>
       <div class="up-head">
-        <span class="lbl glass">Nejbližší akce</span>
+        <a class="lbl glass glowable uplink" href="#akce">Nejbližší akce</a>
         <div class="arrows">
           <button class="glass glowable" type="button" id="upPrev" aria-label="Předchozí akce"><svg class="i"><use href="#i-left"/></svg></button>
           <button class="glass glowable" type="button" id="upNext" aria-label="Další akce"><svg class="i"><use href="#i-arrow"/></svg></button>
@@ -504,7 +520,7 @@ footer a:hover{color:var(--ice)}
       <div class="panel" id="p-sc">
         <div class="sc">
           <div class="now slab" id="now"></div>
-          <div class="sets" id="sets" data-lenis-prevent></div>
+          <div style="display:grid;gap:8px;min-width:0"><div class="sets short" id="sets" data-lenis-prevent></div><button class="btn ghost glowable more-sets" type="button" id="moreSets">Zobrazit všechny sety</button></div>
         </div>
       </div>
 
@@ -628,8 +644,7 @@ footer a:hover{color:var(--ice)}
 
   <div class="wrap">
     <div class="merch slab">
-      <div style="display:grid;gap:6px;justify-items:start"><span class="lbl">Merch</span><h3 style="font-size:clamp(20px,3vw,28px);margin-top:4px">Připravujeme</h3><p style="color:var(--muted)">Novinky budou na Instagramu.</p>
-        <a class="btn ghost glowable" style="margin-top:10px" href="https://www.instagram.com/ales_orbith/" target="_blank" rel="noopener"><svg><use href="#i-ig"/></svg>Sledovat na Instagramu</a></div>
+      <div style="display:grid;gap:6px;justify-items:start"><span class="lbl">Merch</span><h3 style="font-size:clamp(20px,3vw,28px);margin-top:4px">Připravujeme</h3><p style="color:var(--muted)">Novinky budou na Instagramu.</p></div>
       <svg style="width:84px;height:84px;color:var(--glow)" aria-hidden="true"><use href="#logo"/></svg>
     </div>
 
@@ -638,7 +653,7 @@ footer a:hover{color:var(--ice)}
       <div class="hub-grid">
         <a class="slab glowable" href="https://www.instagram.com/ales_orbith/" target="_blank" rel="noopener"><svg class="i"><use href="#i-ig"/></svg><span><b>Instagram</b><small>ales_orbith</small></span><span class="go"><svg class="i"><use href="#i-arrow"/></svg></span></a>
         <a class="slab glowable" href="https://soundcloud.com/ales_gehringer" target="_blank" rel="noopener"><svg class="i"><use href="#i-sc"/></svg><span><b>SoundCloud</b><small>Záznamy setů</small></span><span class="go"><svg class="i"><use href="#i-arrow"/></svg></span></a>
-        <a class="slab glowable" id="hubSpot" href="#" target="_blank" rel="noopener"><svg class="i"><use href="#i-spot"/></svg><span><b>Spotify</b><small>DJ Orbit</small></span><span class="go"><svg class="i"><use href="#i-arrow"/></svg></span></a>
+        <a class="slab glowable" id="hubSpot" href="#" target="_blank" rel="noopener"><svg class="i"><use href="#i-spot"/></svg><span><b>Spotify</b><small>Ales Gehringer</small></span><span class="go"><svg class="i"><use href="#i-arrow"/></svg></span></a>
       </div>
     </div>
   </div>
@@ -647,7 +662,6 @@ footer a:hover{color:var(--ice)}
 <footer>
   <div class="wrap">
     <span>© <span id="yr-now">2026</span> Orbith · Aleš Gehringer</span>
-    <span class="demo">Akce podle Instagramu a SoundCloudu, časy setů doplní Aleš</span>
     <span>Web: <a href="https://vojtechsvoboda.cz" target="_blank" rel="noopener">vojtechsvoboda.cz</a></span>
   </div>
 </footer>
@@ -714,7 +728,7 @@ const SETS = [
   {id:"2134396428",img:"sc-bfl25.jpg",t:"Beats For Love 2025",s:"Ostrava",d:"Léto 2025",ms:5455647,u:"orbith-beats-for-love-2025"}
 ];
 const SC_PROFILE="https://soundcloud.com/ales_gehringer";
-const SPOTIFY_ARTIST="2q7hQHs01f8LGpHTTMh2cv"; /* DJ Orbit */
+const SPOTIFY_ARTIST="4xLg3aOLUaVmBPLoWRBEhm"; /* Ales Gehringer */
 
 const REELS = [
   {src:"reel-openair",t:"EXIT Garden, Brno",s:"Léto 2025 · melodic house",sec:14},
@@ -783,7 +797,7 @@ function slide(box,target,animate=true){
   const l=target.offsetLeft,r=box.clientWidth-(target.offsetLeft+target.offsetWidth);
   if(!ind._t||!animate||!ind.offsetParent){ind.style.transition="none";ind.style.left=l+"px";ind.style.right=r+"px";ind.offsetWidth;ind.style.transition="";ind.style.opacity=1;ind._t=target;return}
   if(ind._t!==target){const right=target.offsetLeft>ind._t.offsetLeft;ind.classList.toggle("rt",right);ind.classList.toggle("lt",!right);
-    ind.animate&&ind.animate([{transform:"scale(1,1)"},{transform:"scale(1.03,.82)",offset:.35},{transform:"scale(.99,1.06)",offset:.7},{transform:"scale(1,1)"}],{duration:560,easing:"ease-out"})}
+  }
   ind.style.opacity=1;ind.style.left=l+"px";ind.style.right=r+"px";ind._t=target;
 }
 const slideSeg=(seg,animate=true)=>slide(seg,seg.querySelector('button[aria-pressed="true"]'),animate);
@@ -816,6 +830,13 @@ function railArrows(){$("#upPrev").disabled=rail.scrollLeft<4;$("#upNext").disab
 rail.addEventListener("scroll",()=>requestAnimationFrame(railArrows),{passive:true});
 const stepRail=d=>{const c=rail.querySelector(".gig");rail.scrollBy({left:d*(c.offsetWidth+12),behavior:"smooth"})};
 $("#upPrev").onclick=()=>stepRail(-1);$("#upNext").onclick=()=>stepRail(1);
+let dragR=null,eatClick=false;
+rail.addEventListener("dragstart",e=>e.preventDefault());
+rail.addEventListener("pointerdown",e=>{if(e.pointerType!=="mouse"||e.button!==0)return;dragR={x:e.clientX,s:rail.scrollLeft,moved:false}});
+addEventListener("pointermove",e=>{if(!dragR)return;const dx=e.clientX-dragR.x;if(!dragR.moved&&Math.abs(dx)>5){dragR.moved=true;rail.classList.add("dragging")}if(dragR.moved)rail.scrollLeft=dragR.s-dx});
+addEventListener("pointerup",()=>{if(!dragR)return;const moved=dragR.moved;dragR=null;if(!moved)return;eatClick=true;setTimeout(()=>eatClick=false,60);
+  const c=rail.querySelector(".gig"),w=c.offsetWidth+12;rail.scrollTo({left:Math.round(rail.scrollLeft/w)*w,behavior:"smooth"});setTimeout(()=>rail.classList.remove("dragging"),450)});
+rail.addEventListener("click",e=>{if(eatClick){e.preventDefault();e.stopPropagation()}},true);
 
 /* ===== Events list ===== */
 const st={when:"up",city:"Vše"};
@@ -826,11 +847,11 @@ when.querySelectorAll("button").forEach(b=>b.onclick=()=>{st.when=b.dataset.v;sa
 function renderList(){
   when.querySelectorAll("button").forEach(b=>b.setAttribute("aria-pressed",b.dataset.v===st.when));slideSeg(when);
   const pool=EVENTS.filter(e=>(st.when==="past")===isPast(e));
-  const all=["Vše",...[...new Set(EVENTS.map(e=>e.mesto).filter(Boolean))].sort((a,b)=>a.localeCompare(b,"cs"))],has=new Set(pool.map(e=>e.mesto));
-  if(st.city!=="Vše"&&!has.has(st.city))st.city="Vše";
-  const cb=$("#cities");
-  if(cb.children.length!==all.length){cb.innerHTML="";all.forEach(c=>{const b=document.createElement("button");b.type="button";b.className="chip glowable";b.textContent=c;b.onclick=()=>{st.city=c;save();renderList()};cb.appendChild(b)})}
-  [...cb.children].forEach(b=>{const c=b.textContent;b.setAttribute("aria-pressed",st.city===c);b.disabled=c!=="Vše"&&!has.has(c)});
+  const cities=["Vše",...[...new Set(pool.map(e=>e.mesto).filter(Boolean))].sort((a,b)=>a.localeCompare(b,"cs"))];
+  if(!cities.includes(st.city))st.city="Vše";
+  const cb=$("#cities"),want=cities.length>2?cities:[],have=[...cb.children].map(b=>b.textContent);
+  if(want.join("|")!==have.join("|"))flip($(".tools"),()=>{cb.innerHTML="";want.forEach(c=>{const b=document.createElement("button");b.type="button";b.className="chip glowable";b.textContent=c;b.onclick=()=>{st.city=c;save();renderList()};cb.appendChild(b)})});
+  [...cb.children].forEach(b=>b.setAttribute("aria-pressed",st.city===b.textContent));
   const list=pool.filter(e=>st.city==="Vše"||e.mesto===st.city).sort((a,b)=>st.when==="past"?dOf(b)-dOf(a):dOf(a)-dOf(b));
   const box=$("#list");box.innerHTML="";
   if(!list.length){box.innerHTML='<p class="empty">Tady zatím nic není. Zkuste jiné město.</p>';return}
@@ -841,6 +862,13 @@ function renderList(){
       <span class="go">${svg("i-arrow")}</span>`;
     r.onclick=()=>openDrawer(e);r.onpointerenter=()=>showPeek(e.plakat);r.onpointerleave=hidePeek;box.appendChild(r)});
 }
+
+/* smooth re-layout: things slide to their new place, new chips fade in */
+function flip(box,mutate){const key=e=>e.id||e.textContent,sel=".seg,.chip";
+  const first=new Map([...box.querySelectorAll(sel)].map(e=>[key(e),e.getBoundingClientRect()]));mutate();
+  [...box.querySelectorAll(sel)].forEach((e,i)=>{const f=first.get(key(e)),l=e.getBoundingClientRect();
+    if(f){const dx=f.left-l.left,dy=f.top-l.top;if(dx||dy)e.animate([{transform:`translate(${dx}px,${dy}px)`},{transform:"none"}],{duration:520,easing:"cubic-bezier(.22,1,.36,1)"})}
+    else e.animate([{opacity:0,transform:"translateX(10px)"},{opacity:1,transform:"none"}],{duration:420,delay:120+i*40,easing:"cubic-bezier(.22,1,.36,1)",fill:"backwards"})})}
 
 /* ===== Drawer ===== */
 const drawer=$("#drawer"),scrim=$("#scrim");let lastF=null;
@@ -896,15 +924,17 @@ const embedCheck=new Promise(res=>{const s=document.createElement("script");s.sr
 /* ===== SoundCloud ===== */
 const setsEl=$("#sets"),nowEl=$("#now");let cs=0,scWidget=null,scPos=0,scPlaying=false;
 SETS.forEach((s,i)=>{const b=document.createElement("button");b.type="button";b.className="item glowable";
-  b.innerHTML=`<img src="${s.img}" alt=""><span class="rt"><b>${esc(s.t)}</b><small>${esc(s.s)} · ${esc(s.d)}</small></span><span class="st"></span><i class="nx"></i>`;
-  b.onclick=()=>pickSet(i,true);setsEl.appendChild(b)});
+  b.innerHTML=`<span class="th"><img src="${s.img}" alt=""><span class="pb">${svg("i-play")}</span></span><span class="rt"><b>${esc(s.t)}</b><small>${esc(s.s)} · ${esc(s.d)}</small></span><span class="st"></span><span class="pg"><i></i></span>`;
+  b.onclick=()=>{if(i===cs&&scWidget){scWidget.toggle();return}pickSet(i,true)};setsEl.appendChild(b)});
 function setsFade(){const t=setsEl.scrollTop,m=setsEl.scrollHeight-setsEl.clientHeight;setsEl.classList.toggle("all",m<4);setsEl.classList.toggle("mid",t>8&&t<m-8);setsEl.classList.toggle("end",m>=4&&t>=m-8)}
-setsEl.addEventListener("scroll",()=>requestAnimationFrame(setsFade),{passive:true});addEventListener("resize",setsFade);
+setsEl.addEventListener("scroll",()=>requestAnimationFrame(setsFade),{passive:true});
+$("#moreSets").onclick=e=>{const sh=setsEl.classList.toggle("short");e.currentTarget.textContent=sh?"Zobrazit všechny sety":"Zobrazit méně"};addEventListener("resize",setsFade);
 function scUrl(s){return `https://api.soundcloud.com/tracks/${s.id}`}
 function scSrc(s,auto){return "https://w.soundcloud.com/player/?url="+encodeURIComponent(scUrl(s))+"&color=%239cc9ff&auto_play="+(auto?"true":"false")+"&hide_related=true&show_comments=false&show_user=true&show_reposts=false&show_teaser=false&visual=true"}
-function markSets(){setsEl.querySelectorAll(".item").forEach((b,j)=>{const on=j===cs;b.classList.toggle("on",on);
-  b.querySelector(".st").innerHTML=on&&scPlaying?EQ+"−"+clock((SETS[j].ms-scPos)/1000):on&&scPos>0?"−"+clock((SETS[j].ms-scPos)/1000):dur(SETS[j].ms);
-  if(!on)b.querySelector(".nx").style.transform="scaleX(0)"})}
+function markSets(){setsEl.querySelectorAll(".item").forEach((b,j)=>{const on=j===cs;b.classList.toggle("on",on);b.classList.toggle("playing",on&&scPlaying);
+  b.querySelector(".st").innerHTML=on&&scPlaying?EQ+clock(scPos/1000):on&&scPos>0?clock(scPos/1000):dur(SETS[j].ms);
+  b.querySelector(".pb").innerHTML=svg(on&&scPlaying?"i-pause":"i-play");
+  if(!on)b.querySelector(".pg i").style.width="0"})}
 function renderNow(auto){const s=SETS[cs];
   if(canEmbed){
     if(!scWidget){nowEl.innerHTML=`<div class="frame"><iframe id="scf" allow="autoplay" title="SoundCloud přehrávač" src="${scSrc(s,auto)}"></iframe></div><div class="meta"><span class="lbl">${esc(s.d)} · ${dur(s.ms)}</span><a class="btn ghost glowable" href="https://soundcloud.com/ales_gehringer/${s.u}" target="_blank" rel="noopener">${svg("i-sc")}Otevřít na SoundCloudu</a></div>`;
@@ -918,27 +948,29 @@ function renderNow(auto){const s=SETS[cs];
     nowEl.innerHTML=`<div class="art"><img src="${s.img}" alt=""><div class="cap"><b>${esc(s.t)}</b><span>${esc(s.s)} · ${esc(s.d)} · ${dur(s.ms)}</span></div></div>
       <div class="meta"><a class="btn light" href="https://soundcloud.com/ales_gehringer/${s.u}" target="_blank" rel="noopener">${svg("i-play")}Poslechnout na SoundCloudu</a><span class="note">Přehrávač SoundCloudu se v náhledu nenačte, na webu hraje přímo tady.</span></div>`}
   markSets()}
-function scProgress(rel){const b=setsEl.children[cs];if(!b)return;b.querySelector(".nx").style.transform=`scaleX(${rel})`;
-  b.querySelector(".st").innerHTML=(scPlaying?EQ:"")+"−"+clock((SETS[cs].ms-scPos)/1000)}
-function pickSet(i,auto){if(i<0)return;cs=i;scPlaying=false;scPos=0;if(canEmbed===null){embedCheck.then(()=>renderNow(auto));return}renderNow(auto)}
+let scSec=-1;
+function scProgress(rel){const b=setsEl.children[cs];if(!b)return;b.querySelector(".pg i").style.width=(rel*100)+"%";
+  const sec=Math.floor(scPos/1000);if(sec!==scSec){scSec=sec;b.querySelector(".st").innerHTML=(scPlaying?EQ:"")+clock(sec)}}
+function pickSet(i,auto){if(i<0)return;cs=i;scPlaying=false;scPos=0;scSec=-1;if(canEmbed===null){embedCheck.then(()=>renderNow(auto));return}renderNow(auto)}
 
 /* ===== Spotify ===== */
 let spDone=false;
 function renderSpotify(){if(spDone)return;const el=$("#spot");
   const draw=()=>{spDone=true;el.innerHTML=canEmbed
     ?`<iframe title="Orbith na Spotify" src="https://open.spotify.com/embed/artist/${SPOTIFY_ARTIST}?utm_source=generator&theme=0" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy"></iframe>`
-    :`<div class="fallback slab"><span class="lbl">Spotify</span><h3 style="font-size:22px">DJ Orbit na Spotify</h3><p>Přehrávač Spotify se v náhledu nenačte, na webu bude přímo tady.</p><a class="btn ghost glowable" href="https://open.spotify.com/artist/${SPOTIFY_ARTIST}" target="_blank" rel="noopener">${svg("i-spot")}Otevřít Spotify</a></div>`};
+    :`<div class="fallback slab"><span class="lbl">Spotify</span><h3 style="font-size:22px">Ales Gehringer na Spotify</h3><p>Přehrávač Spotify se v náhledu nenačte, na webu bude přímo tady.</p><a class="btn ghost glowable" href="https://open.spotify.com/artist/${SPOTIFY_ARTIST}" target="_blank" rel="noopener">${svg("i-spot")}Otevřít Spotify</a></div>`};
   canEmbed===null?embedCheck.then(draw):draw()}
 
 /* ===== Reels with sound ===== */
 const vid=$("#vid"),vbar=$("#vbar"),snd=$("#snd"),pp=$("#pp");let cur=0,wantSound=false,playerVisible=false;
 const rl=$("#reelList");
 REELS.forEach((r,i)=>{const b=document.createElement("button");b.type="button";b.className="item glowable";
-  b.innerHTML=`<img src="${r.src}.jpg" alt=""><span class="rt"><b>${esc(r.t)}</b><small>${esc(r.s)}</small></span><span class="st"></span><i class="nx"></i>`;b.onclick=()=>{playReel(i,true)};rl.appendChild(b)});
+  b.innerHTML=`<span class="th"><img src="${r.src}.jpg" alt=""><span class="pb">${svg("i-play")}</span></span><span class="rt"><b>${esc(r.t)}</b><small>${esc(r.s)}</small></span><span class="st"></span><span class="pg"><i></i></span>`;
+  b.onclick=()=>{if(i===cur){vid.paused?tryPlay():vid.pause();return}playReel(i,true)};rl.appendChild(b)});
 function setCtl(){snd.innerHTML=svg(vid.muted?"i-mute":"i-sound")+(vid.muted?"Zvuk":"");snd.classList.toggle("hot",vid.muted);snd.setAttribute("aria-label",vid.muted?"Zapnout zvuk":"Vypnout zvuk");
   pp.innerHTML=svg(vid.paused?"i-play":"i-pause");pp.setAttribute("aria-label",vid.paused?"Přehrát":"Pozastavit")}
-function markReels(){rl.querySelectorAll(".item").forEach((b,j)=>{b.classList.toggle("on",j===cur);
-  b.querySelector(".st").innerHTML=j===cur&&!vid.paused?EQ+clock(REELS[j].sec):clock(REELS[j].sec);b.querySelector(".nx").style.transform="scaleX(0)"})}
+function markReels(){rl.querySelectorAll(".item").forEach((b,j)=>{const on=j===cur;b.classList.toggle("on",on);b.classList.toggle("playing",on&&!vid.paused);
+  b.querySelector(".st").innerHTML=on&&!vid.paused?EQ+clock(vid.currentTime||0):clock(REELS[j].sec);b.querySelector(".pb").innerHTML=svg(on&&!vid.paused?"i-pause":"i-play");if(!on)b.querySelector(".pg i").style.width="0"})}
 function tryPlay(){const p=vid.play();if(p)p.catch(()=>{if(!vid.muted){vid.muted=true;setCtl();vid.play().catch(()=>{})}})}
 function playReel(i,user){cur=i;const r=REELS[i];vid.poster=r.src+".jpg";vid.src=r.src+".mp4";vid.muted=!wantSound;$("#vtitle").textContent=r.t;$("#vsub").textContent=r.s;
   markReels();if(user||(playerVisible&&tab==="vid"))tryPlay();setCtl()}
@@ -947,10 +979,10 @@ snd.onclick=()=>{wantSound=vid.muted;vid.muted=!wantSound;tryPlay();setCtl()};
 pp.onclick=()=>vid.paused?tryPlay():vid.pause();
 vid.onclick=()=>vid.paused?tryPlay():vid.pause();
 vid.addEventListener("ended",()=>playReel((cur+1)%REELS.length));
-["play","pause","volumechange"].forEach(ev=>vid.addEventListener(ev,setCtl));
+["play","pause","volumechange"].forEach(ev=>vid.addEventListener(ev,()=>{setCtl();if(ev!=="volumechange"){lastLeft=-1;markReels()}}));
 let lastLeft=-1;
 (function prog(){requestAnimationFrame(prog);if(tab!=="vid"||!vid.duration)return;const r=vid.currentTime/vid.duration;vbar.style.transform=`scaleX(${r})`;
-  const b=rl.children[cur];if(b){b.querySelector(".nx").style.transform=`scaleX(${r})`;const left=Math.ceil(vid.duration-vid.currentTime),key=left+(vid.paused?"p":"");if(key!==lastLeft){lastLeft=key;b.querySelector(".st").innerHTML=(vid.paused?"":EQ)+"−"+clock(left)}}})();
+  const b=rl.children[cur];if(b){b.querySelector(".pg i").style.width=(r*100)+"%";const t=Math.floor(vid.currentTime),key=t+(vid.paused?"p":"");if(key!==lastLeft){lastLeft=key;b.querySelector(".st").innerHTML=(vid.paused?"":EQ)+clock(t)}}})();
 new IntersectionObserver(([en])=>{playerVisible=en.isIntersecting;if(tab!=="vid")return;if(playerVisible)tryPlay();else vid.pause()},{threshold:.35}).observe($("#player"));
 playReel(0);
 
