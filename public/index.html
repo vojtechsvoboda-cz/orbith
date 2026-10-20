@@ -386,9 +386,11 @@ input[type=range]:active::-webkit-slider-thumb{box-shadow:0 0 0 10px rgba(156,20
 @keyframes draw{to{stroke-dashoffset:0}}
 .done h3{font-size:22px}
 .done>p{color:var(--muted);max-width:52ch}
-.recap{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;max-width:640px}
-.recap span{display:inline-flex;align-items:center;gap:8px;padding:9px 13px;border-radius:99px;border:1px solid var(--edge);background:rgba(160,195,255,.05);font-size:14px;color:var(--soft)}
-.recap span b{font-family:var(--f-display);font-weight:400;font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+.recap{width:min(420px,100%);display:grid;border:1px solid var(--edge);border-radius:14px;overflow:hidden;text-align:left}
+.recap div{display:grid;grid-template-columns:110px 1fr;gap:12px;align-items:center;padding:11px 16px;border-top:1px solid var(--edge)}
+.recap div:first-child{border-top:0}
+.recap b{font-family:var(--f-display);font-weight:400;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+.recap span{font-size:15px;color:var(--ice)}
 @media (max-width:820px){.form{grid-template-columns:1fr}}
 @media (max-width:520px){.grid2{grid-template-columns:1fr}.bk-head{flex-direction:column;text-align:center}}
 
@@ -406,6 +408,11 @@ input[type=range]:active::-webkit-slider-thumb{box-shadow:0 0 0 10px rgba(156,20
 footer{border-top:1px solid var(--edge);margin-top:clamp(50px,6vw,80px);padding-block:30px calc(30px + env(safe-area-inset-bottom,0px))}
 footer .wrap{display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;color:var(--muted);font-size:14px}
 footer a:hover{color:var(--ice)}
+.credit{display:inline-flex;align-items:center;gap:10px;opacity:.75;transition:opacity .2s}
+.credit:hover{opacity:1}
+.credit .vs{width:26px;height:17px;color:var(--ice)}
+.credit span{display:grid;line-height:1.25;font-size:11px;letter-spacing:.06em;color:var(--muted)}
+.credit b{font-weight:500;font-size:13px;letter-spacing:0;color:var(--soft)}
 
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style>
@@ -662,7 +669,7 @@ footer a:hover{color:var(--ice)}
 <footer>
   <div class="wrap">
     <span>© <span id="yr-now">2026</span> Orbith · Aleš Gehringer</span>
-    <span>Web: <a href="https://vojtechsvoboda.cz" target="_blank" rel="noopener">vojtechsvoboda.cz</a></span>
+    <a class="credit" href="https://vojtechsvoboda.cz" target="_blank" rel="noopener"><svg class="vs" viewBox="0 0 131 82" aria-hidden="true"><path fill="currentColor" d="M125.753,1.651A32.49,32.49,0,0,0,110.767.376Q103.783,1.555,97.043,9.7l-.958,1.147L84.845,24.279l-18.908,22.6-.554.661-.554-.661-18.908-22.6L34.68,10.843,33.722,9.7Q26.989,1.553,20,.376A32.49,32.49,0,0,0,5.017,1.651L0,3.451.743,5.874A11.289,11.289,0,0,1,8.23,7.162q.226.122.451.258c.125.073.245.15.369.232.1.064.2.133.3.2.077.052.155.1.232.159l.266.189c.159.116.322.241.485.365.309.236.623.494.941.769.056.047.112.094.163.142.2.172.4.348.6.533h0l6.327,8.277h0c-.112.09-.228.18-.344.271a31.431,31.431,0,0,0-8.217,9.875,27,27,0,0,0,0,25.321,31.441,31.441,0,0,0,8.217,9.875,40.634,40.634,0,0,0,25.531,8.621,43.034,43.034,0,0,0,14.239-2.384h0l7.585,9.922,7.585-9.922h0A43.034,43.034,0,0,0,87.2,72.249a40.643,40.643,0,0,0,25.531-8.621,31.432,31.432,0,0,0,8.217-9.875,27,27,0,0,0,0-25.321,31.441,31.441,0,0,0-8.217-9.875c-.112-.09-.228-.185-.339-.271h0l6.327-8.277h0c.2-.185.4-.361.6-.533.056-.047.112-.094.163-.142.322-.275.636-.533.941-.769.163-.125.326-.249.485-.365.09-.064.176-.129.266-.189s.155-.107.232-.159c.1-.069.2-.137.3-.2.125-.082.245-.159.369-.232q.226-.135.451-.258a11.285,11.285,0,0,1,7.487-1.289l.743-2.423-5.017-1.8ZM43.558,58.01A26.384,26.384,0,0,1,26.97,52.55C23.053,49.389,20.9,45.321,20.9,41.095s2.156-8.29,6.074-11.451a.457.457,0,0,0,.047-.039h0l21.412,28.01a29.817,29.817,0,0,1-4.871.4Zm60.19-28.4s.034.026.047.039c3.917,3.161,6.074,7.229,6.074,11.451s-2.156,8.294-6.074,11.456A26.375,26.375,0,0,1,87.207,58.01a29.778,29.778,0,0,1-4.871-.4l21.412-28.01Z"/><path fill="currentColor" d="M83.668,15.607s-10.115-.06-18.285,6.056c-8.17-6.116-18.281-6.056-18.281-6.056l18.281,21.047Z"/></svg><span>Web a design<b>VojtechSvoboda.cz</b></span></a>
   </div>
 </footer>
 
@@ -1051,7 +1058,7 @@ $("#form").addEventListener("submit",ev=>{ev.preventDefault();const name=$("#nam
   if(!name||!c){err.textContent="Doplňte prosím jméno a kontakt.";return}err.textContent="";
   const dt=checkDate(),s=SVC.find(x=>x.k===F.type),place=$("#place").value.trim();
   const rows=[["Akce",s.t],["Datum",dt?`${DAYS[dt.getDay()]} ${dot(dt)} ${sel.y}`:"—"],["Místo",place||"—"],["Hosté",gOut.textContent],["Set",LENS[F.len-1]]];
-  $("#recap").innerHTML=rows.map(([k,v])=>`<span><b>${k}</b>${esc(v)}</span>`).join("");
+  $("#recap").innerHTML=rows.map(([k,v])=>`<div><b>${k}</b><span>${esc(v)}</span></div>`).join("");
   $("#doneTxt").textContent=`Odpověď pošlu na ${c}.`;
   ["colA","colB","sub"].forEach(id=>$("#"+id).hidden=true);$("#done").hidden=false});
 $("#again").onclick=()=>{["colA","colB","sub"].forEach(id=>$("#"+id).hidden=false);$("#done").hidden=true;renderLen(false);initWheels()};
