@@ -1,0 +1,339 @@
+<!doctype html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex">
+<meta name="theme-color" content="#04060b">
+<title>Orbith Administrace</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Michroma&family=Instrument+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout: mobilní administrace — jedna úzká kolona, nahoře přepínač Akce / Poptávky, editor akce jako panel přes celou obrazovku. */
+:root{
+  --bg:#04060b;--panel:#080c17;--panel-2:#0c1222;--edge:rgba(160,195,255,.15);--edge-hi:rgba(170,205,255,.42);
+  --ice:#e9eefc;--soft:#c3cbe2;--muted:#8d98b7;--dim:#56607d;--glow:#9cc9ff;--ok:#8fe3b0;--warn:#ffc78a;
+  --f-display:"Michroma","Eurostile","Arial Black",sans-serif;--f-body:"Instrument Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{margin:0;background:var(--bg);color:var(--ice);font-family:var(--f-body);font-size:16px;line-height:1.5;-webkit-font-smoothing:antialiased}
+a{color:inherit;text-decoration:none}
+button,input,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--glow);outline-offset:2px;border-radius:8px}
+::placeholder{color:var(--dim)}
+.wrap{max-width:720px;margin-inline:auto;padding-inline:16px;padding-block:18px 60px;display:grid;gap:18px}
+.lbl{font-family:var(--f-display);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+h1,h2,h3{font-family:var(--f-display);font-weight:400;margin:0;letter-spacing:.03em}
+svg.i{width:18px;height:18px;flex:none;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+.slab{background:linear-gradient(180deg,var(--panel-2),var(--panel));border:1px solid var(--edge);border-radius:18px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:9px;font-family:var(--f-display);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;padding:12px 18px;border-radius:99px;border:0;cursor:pointer;white-space:nowrap;transition:box-shadow .2s,transform .15s}
+.btn.light{background:var(--ice);color:#05070d}
+.btn.light:hover{box-shadow:0 8px 30px -10px rgba(156,201,255,.9)}
+.btn.ghost{background:transparent;box-shadow:inset 0 0 0 1px var(--edge)}
+.btn.ghost:hover{box-shadow:inset 0 0 0 1px var(--edge-hi)}
+.btn.danger{background:transparent;color:#ff9d9d;box-shadow:inset 0 0 0 1px rgba(255,157,157,.3)}
+.btn.sm{padding:9px 13px;font-size:9.5px}
+
+.top{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.brand{display:flex;align-items:center;gap:10px}
+.brand svg{width:32px;height:32px}
+.brand b{font-family:var(--f-display);font-weight:400;font-size:13px;letter-spacing:.22em;display:block}
+.brand small{display:block;font-size:12px;color:var(--muted)}
+.seg{position:relative;display:flex;padding:4px;border-radius:99px;background:var(--panel);border:1px solid var(--edge)}
+.seg button{position:relative;z-index:1;flex:1;background:none;border:0;cursor:pointer;font-family:var(--f-display);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);padding:10px 12px;border-radius:99px;display:flex;align-items:center;justify-content:center;gap:8px}
+.seg button[aria-pressed="true"]{color:var(--ice)}
+.seg .ind{position:absolute;top:4px;bottom:4px;border-radius:99px;background:rgba(160,195,255,.13);box-shadow:inset 0 0 0 1px var(--edge-hi);transition:left .45s cubic-bezier(.22,1,.36,1),width .45s cubic-bezier(.22,1,.36,1)}
+.badge{min-width:20px;height:20px;padding:0 6px;border-radius:99px;background:var(--glow);color:#05070d;font-family:var(--f-body);font-weight:600;font-size:12px;letter-spacing:0;display:inline-grid;place-items:center}
+
+/* import */
+.imp{padding:18px;display:grid;gap:12px}
+.imp h2{font-size:17px}
+.imp p{color:var(--muted);font-size:14px;margin:0}
+.imp-row{display:flex;gap:8px}
+.imp-row input{flex:1;min-width:0}
+input.txt,textarea,input[type=date],input[type=time]{width:100%;background:var(--bg);border:1px solid var(--edge);border-radius:12px;padding:11px 13px;font-size:15px;color:var(--ice)}
+input:focus,textarea:focus{outline:none;border-color:var(--glow);box-shadow:0 0 0 3px rgba(156,201,255,.14)}
+textarea{min-height:80px;resize:vertical}
+.linkish{background:none;border:0;color:var(--glow);font-size:13.5px;cursor:pointer;padding:0;text-align:left}
+.steps{display:grid;gap:8px;padding-top:4px}
+.step{display:flex;align-items:center;gap:10px;font-size:14px;color:var(--dim);transition:color .3s}
+.step i{width:16px;height:16px;border-radius:50%;border:1.5px solid currentColor;flex:none;display:grid;place-items:center}
+.step.run{color:var(--soft)}
+.step.run i{border-color:var(--glow);border-top-color:transparent;animation:spin .7s linear infinite}
+.step.ok{color:var(--ok)}
+.step.ok i{background:var(--ok);border-color:var(--ok)}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* events list */
+.sec-head{display:flex;justify-content:space-between;align-items:center;margin-top:6px}
+.ev{display:grid;grid-template-columns:52px minmax(0,1fr) auto;gap:14px;align-items:center;padding:10px;border-radius:14px;border:1px solid var(--edge);background:var(--panel);cursor:pointer;text-align:left;width:100%;transition:border-color .2s}
+.ev:hover{border-color:var(--edge-hi)}
+.ev img{width:52px;height:64px;object-fit:cover;border-radius:8px;background:#111}
+.ev b{display:block;font-weight:600;line-height:1.3}
+.ev small{display:block;color:var(--muted);font-size:13px;margin-top:2px}
+.ev .when{font-family:var(--f-display);font-size:10px;letter-spacing:.12em;color:var(--glow);text-transform:uppercase;margin-bottom:4px;display:block}
+.ev .warn{color:var(--warn)}
+.ev.past{opacity:.6}
+.list{display:grid;gap:8px}
+.empty{color:var(--muted);font-size:14px;padding:6px 2px}
+
+/* editor */
+.sheet{position:fixed;inset:0;z-index:20;background:var(--bg);overflow-y:auto;animation:sheetin .35s cubic-bezier(.22,1,.36,1)}
+@keyframes sheetin{from{transform:translateY(24px)}}
+@keyframes up{from{transform:translateY(30px);opacity:0}}
+.sheet .wrap{gap:16px}
+.bar{position:sticky;top:0;z-index:2;display:flex;justify-content:space-between;align-items:center;gap:10px;padding:12px 16px;background:rgba(4,6,11,.85);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-bottom:1px solid var(--edge)}
+.bar h2{font-size:14px}
+.note{display:flex;gap:10px;align-items:flex-start;padding:12px 14px;border-radius:12px;background:rgba(156,201,255,.08);border:1px solid var(--edge-hi);font-size:14px;color:var(--soft)}
+.note.warn{background:rgba(255,199,138,.08);border-color:rgba(255,199,138,.35);color:var(--warn)}
+.f{display:grid;gap:6px;min-width:0}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.from-ig{box-shadow:0 0 0 1px rgba(156,201,255,.45)}
+.poster{display:grid;grid-template-columns:110px 1fr;gap:14px;align-items:center}
+.poster img{width:110px;height:138px;object-fit:cover;border-radius:10px;background:#111;border:1px solid var(--edge)}
+.lu{display:grid;gap:8px}
+.lur{display:grid;grid-template-columns:minmax(0,1fr) 92px 92px 34px;gap:6px;align-items:center}
+.lur.me input.txt{border-color:var(--glow);background:rgba(156,201,255,.08)}
+.lur .x{width:34px;height:34px;border-radius:50%;border:1px solid var(--edge);background:none;cursor:pointer;color:var(--muted);display:grid;place-items:center}
+.lur input[type=time]{padding:10px 6px;font-size:14px}
+.len{font-family:var(--f-display);font-size:10px;letter-spacing:.12em;color:var(--glow);text-transform:uppercase}
+.actions{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;padding-top:6px}
+@media (max-width:480px){.lur{grid-template-columns:minmax(0,1fr) 78px 78px 30px}.g2.dt{grid-template-columns:1fr}}
+
+/* inquiries */
+.inq{padding:16px;display:grid;gap:10px}
+.inq .hd{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
+.inq b{font-weight:600}
+.inq small{color:var(--muted);font-size:13px}
+.st{font-family:var(--f-display);font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;padding:6px 10px;border-radius:99px;border:1px solid var(--edge-hi);color:var(--glow);white-space:nowrap}
+.st.done{color:var(--muted);border-color:var(--edge)}
+.kv{display:grid;grid-template-columns:90px 1fr;gap:4px 12px;font-size:14px}
+.kv span{font-family:var(--f-display);font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);padding-top:3px}
+.msg{color:var(--soft);font-size:14.5px;border-left:2px solid var(--edge-hi);padding-left:12px}
+.inq .act{display:flex;gap:8px;flex-wrap:wrap}
+.foot{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;color:var(--dim);font-size:12.5px;padding-top:12px;border-top:1px solid var(--edge)}
+.foot button{background:none;border:0;color:var(--muted);cursor:pointer;text-decoration:underline;padding:0;font-size:12.5px}
+.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:40;background:var(--ice);color:#05070d;padding:12px 18px;border-radius:99px;font-weight:600;font-size:14px;box-shadow:0 10px 40px -10px rgba(0,0,0,.8);animation:up .3s ease}
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+  <symbol id="logo" viewBox="0 0 100 100"><g transform="rotate(-22 50 50)"><path d="M3 50 A47 14 0 0 1 97 50" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" opacity=".5"/></g><rect x="29" y="21" width="42" height="58" rx="19" fill="none" stroke="currentColor" stroke-width="11"/><g transform="rotate(-22 50 50)"><path d="M3 50 A47 14 0 0 0 97 50" fill="none" stroke="#04060b" stroke-width="10" stroke-linecap="round"/><path d="M3 50 A47 14 0 0 0 97 50" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round"/></g></symbol>
+  <symbol id="i-ig" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="5.2" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="12" cy="12" r="4.2" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="17.4" cy="6.6" r="1.2" fill="currentColor"/></symbol>
+  <symbol id="i-cal" viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15" rx="3"/><path d="M3.5 10h17M8 3v4M16 3v4"/></symbol>
+  <symbol id="i-mail" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="M4 7l8 6 8-6"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></symbol>
+  <symbol id="i-ext" viewBox="0 0 24 24"><path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></symbol>
+  <symbol id="i-left" viewBox="0 0 24 24"><path d="M19 12H5M11 6l-6 6 6 6"/></symbol>
+</defs></svg>
+
+<div class="wrap" id="app">
+  <div class="top">
+    <div class="brand"><svg aria-hidden="true" style="color:var(--ice)"><use href="#logo"/></svg><div><b>ORBITH</b><small>Administrace · ales.gehringer@gmail.com</small></div></div>
+    <a class="btn ghost sm" id="toWeb" href="../" target="_blank" rel="noopener">Web <svg class="i" width="14" height="14"><use href="#i-ext"/></svg></a>
+  </div>
+
+  <div class="seg" id="tabs" role="tablist">
+    <span class="ind" aria-hidden="true"></span>
+    <button type="button" data-t="ev" aria-pressed="true"><svg class="i"><use href="#i-cal"/></svg>Akce</button>
+    <button type="button" data-t="inq" aria-pressed="false"><svg class="i"><use href="#i-mail"/></svg>Poptávky <span class="badge" id="nb">0</span></button>
+  </div>
+
+  <section id="t-ev" style="display:grid;gap:18px">
+    <div class="imp slab">
+      <span class="lbl" style="color:var(--glow)">Nová akce</span>
+      <h2>Vložte odkaz z Instagramu</h2>
+      <p>Plakát, název, datum, místo i line-up se načtou samy. Vy jen zkontrolujete a doplníte čas setu.</p>
+      <div class="imp-row"><input class="txt" id="igUrl" type="url" inputmode="url" placeholder="https://www.instagram.com/p/…"><button class="btn light" type="button" id="igGo">Načíst</button></div>
+      <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap">
+        <button class="linkish" type="button" id="igDemo">Zkusit ukázkový příspěvek</button>
+        <button class="linkish" type="button" id="manual">Vyplnit ručně</button>
+      </div>
+      <div class="steps" id="steps" hidden>
+        <div class="step"><i></i>Stahuji příspěvek z Instagramu</div>
+        <div class="step"><i></i>Ukládám plakát</div>
+        <div class="step"><i></i>Čtu z popisu datum, místo a line-up</div>
+      </div>
+    </div>
+
+    <div class="sec-head"><span class="lbl">Nadcházející</span><span class="lbl" id="cUp"></span></div>
+    <div class="list" id="lUp"></div>
+    <div class="sec-head"><span class="lbl">Proběhlé</span><span class="lbl" id="cPast"></span></div>
+    <div class="list" id="lPast"></div>
+  </section>
+
+  <section id="t-inq" hidden style="display:grid;gap:12px">
+    <p class="empty" style="margin:0">Poptávky z formuláře na webu. Zároveň chodí na e-mail ales.gehringer@gmail.com.</p>
+    <div class="list" id="lInq"></div>
+  </section>
+
+  <div class="foot"><span>Ukázka administrace · změny se ukládají jen v tomto prohlížeči</span><button type="button" id="reset">Obnovit ukázková data</button></div>
+</div>
+
+<div class="sheet" id="sheet" hidden>
+  <div class="bar">
+    <button class="btn ghost sm" type="button" id="close"><svg class="i" width="14" height="14"><use href="#i-left"/></svg>Zpět</button>
+    <h2 id="sTitle">Nová akce</h2>
+    <button class="btn light sm" type="button" id="save">Uložit</button>
+  </div>
+  <div class="wrap">
+    <div class="note" id="sNote" hidden></div>
+    <div class="poster">
+      <img id="pImg" alt="">
+      <div class="f"><span class="lbl">Plakát</span><label class="btn ghost sm" style="justify-self:start">Nahrát z telefonu<input type="file" accept="image/*" id="pFile" hidden></label><small style="color:var(--muted);font-size:13px">Nahraný plakát se uloží k webu.</small></div>
+    </div>
+    <div class="f"><label class="lbl" for="fAkce">Název akce</label><input class="txt" id="fAkce" placeholder="EXIT 11 let · House edice"></div>
+    <div class="g2 dt">
+      <div class="f"><label class="lbl" for="fDatum">Datum</label><input type="date" id="fDatum"></div>
+      <div class="f"><label class="lbl" for="fPor">Pořadatel</label><input class="txt" id="fPor" placeholder="EXIT Club Brno"></div>
+    </div>
+    <div class="g2">
+      <div class="f"><label class="lbl" for="fMisto">Místo</label><input class="txt" id="fMisto" placeholder="EXIT Club"></div>
+      <div class="f"><label class="lbl" for="fMesto">Město</label><input class="txt" id="fMesto" placeholder="Brno"></div>
+    </div>
+    <div class="f">
+      <div style="display:flex;justify-content:space-between;align-items:baseline"><span class="lbl">Line-up a časy</span><span class="len" id="len"></span></div>
+      <div class="lu" id="lu"></div>
+      <button class="linkish" type="button" id="addDj" style="display:inline-flex;gap:6px;align-items:center"><svg class="i" width="16" height="16"><use href="#i-plus"/></svg>Přidat DJe</button>
+    </div>
+    <div class="g2">
+      <div class="f"><label class="lbl" for="fVst">Vstupenky</label><input class="txt" id="fVst" placeholder="Odkaz na vstupenky"></div>
+      <div class="f"><label class="lbl" for="fOdk">Instagram</label><input class="txt" id="fOdk" placeholder="Odkaz na příspěvek"></div>
+    </div>
+    <div class="f"><label class="lbl" for="fPopis">Popis</label><textarea id="fPopis" placeholder="Pár slov o akci"></textarea></div>
+    <div class="actions"><button class="btn danger sm" type="button" id="del">Smazat akci</button><button class="btn light" type="button" id="save2">Uložit akci</button></div>
+  </div>
+</div>
+
+<script>
+/* ---------- ukázková data (stejná jako na webu) ---------- */
+const EVENTS = [
+  {datum:"2026-10-23",cas:"",demo:1,akce:"Amanita × Orbith",misto:"Café bar Amanita",mesto:"",poradatel:"Gat Electra",plakat:"poster-amanita.jpg",
+   odkaz:"https://www.instagram.com/gatelectra_official/reel/DeO-hJEse4D/",vstupenky:"",lineup:"Warm-up 19:00-21:00; ORBITH 21:00-00:00",popis:"Amanita se po čase znovu otvírá. Obývák a pořádná párty."},
+  {datum:"2026-10-30",cas:"",akce:"EXIT 11 let · House edice",misto:"EXIT Club",mesto:"Brno",poradatel:"EXIT Club Brno",plakat:"poster-exit11.jpg",
+   odkaz:"https://www.instagram.com/exitclubbrno/p/DeOjf_ssG9p/",vstupenky:"https://www.smsticket.cz",demo:1,lineup:"Lahvisz 21:00-22:00; Bastien 22:00-23:00; ORBITH 23:00-01:00; Kollektiv Turmstrasse (live) 01:00-03:00; Marcel de Valerio 03:00-04:30; Elio Audio; George the Catholic",popis:"Narozeninová house edice EXITu, hlavním hostem je Kollektiv Turmstrasse."},
+  {datum:"2026-11-21",cas:"",akce:"People Chase",misto:"Chuchle Arena",mesto:"Praha",poradatel:"People Chase",plakat:"poster-peoplechase.jpg",
+   odkaz:"https://www.instagram.com/peoplechase_events/p/Dd55MU4oiMy/",vstupenky:"https://goout.net",demo:1,lineup:"ORBITH 20:00-21:00",popis:"Párty na tribunách v Chuchli. Vstupenky jsou v předprodeji na GoOut."},
+  {datum:"2026-10-10",cas:"",akce:"EXIT Warehouse · Day Rave",misto:"Malá Amerika",mesto:"Brno",poradatel:"EXIT Events",plakat:"poster-warehouse.jpg",set:"2417175753",
+   odkaz:"https://www.instagram.com/ales_orbith/reel/DePKcqNoEMV/",lineup:"Kristie Kardio; ORBITH; Oksi; Phil Albedo; Val",popis:"Denní rave v hale na Malé Americe, od 16 do 22 hodin."},
+  {datum:"2026-07-04",cas:"",akce:"Beats For Love · Deas b2b Orbith",misto:"Beats For Love",mesto:"Ostrava",poradatel:"Beats For Love",plakat:"sc-bfl26.jpg",set:"2369287130",lineup:"Deas b2b ORBITH",popis:"Společný set s Deasem na festivalu Beats For Love."},
+  {datum:"2026-04-17",cas:"",akce:"Exit Events @ Garbe",misto:"Garbe",mesto:"Praha",poradatel:"EXIT Events",plakat:"sc-garbe.jpg",set:"2307076013",
+   odkaz:"https://www.instagram.com/ales_orbith/reel/DXRskOBiKkD/",lineup:"Dominik Gehringer b2b ORBITH",popis:"Společný set s Dominikem Gehringerem."},
+  {datum:"2026-02-28",cas:"",akce:"EXIT Club · Afterparty",misto:"EXIT Club",mesto:"Brno",poradatel:"EXIT Club Brno",plakat:"sc-afterparty.jpg",set:"2275208264",lineup:"ORBITH",popis:"Afterparty v EXIT Clubu."},
+  {datum:"2026-02-07",cas:"",akce:"EXIT On The Street",misto:"EXIT On The Street",mesto:"Brno",poradatel:"EXIT Events",plakat:"sc-street.jpg",set:"2263163945",lineup:"ORBITH",popis:""},
+  {datum:"2025-12-31",cas:"",akce:"Silvestr 2025",misto:"Silvestr",mesto:"Brno",poradatel:"",plakat:"sc-nye.jpg",set:"2240438216",lineup:"ORBITH",popis:"Silvestrovský set."},
+  {datum:"2025-10-24",cas:"",akce:"ROXY · warm-up před Adamem Beyerem",misto:"ROXY",mesto:"Praha",poradatel:"ROXY Prague",plakat:"sc-roxy.jpg",set:"2199740583",lineup:"ORBITH (warm-up); Adam Beyer",popis:"Warm-up před Adamem Beyerem v pražském Roxy."},
+  {datum:"2025-07-18",cas:"",akce:"EXIT Garden",misto:"EXIT Garden",mesto:"Brno",poradatel:"EXIT Events",plakat:"sc-garden.jpg",set:"2134489917",
+   odkaz:"https://www.instagram.com/ales_orbith/reel/DMVXeWPsZfg/",lineup:"ORBITH",popis:"Letní páteční večer v Brně pod širým nebem."}
+];
+const IMG=location.pathname.includes("/admin")?"../":"";
+const KEY_EV="orbith_demo_events",KEY_INQ="orbith_demo_inq";
+const SEED_INQ=[
+  {id:"q1",ts:Date.now()-36e5*5,name:"Petra Malá",contact:"petra@agentura.cz",typ:"Firemní akce",datum:"2026-12-12",misto:"Hotel Passage, Brno",hoste:"150",set:"4 h",msg:"Vánoční večírek pro klienta, po večeři bychom rádi tanec do 1:00.",done:false},
+  {id:"q2",ts:Date.now()-864e5*3,name:"Tomáš Krejčí",contact:"+420 777 123 456",typ:"Kluby a festivaly",datum:"2027-02-06",misto:"Fléda, Brno",hoste:"600",set:"2 h",msg:"Hledáme headlinera na techno noc.",done:true}
+];
+const store={get(k,d){try{const v=localStorage.getItem(k);return v?JSON.parse(v):d}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){toast("Nepodařilo se uložit, plakát je možná moc velký")}}};
+let events=store.get(KEY_EV,null)||EVENTS.map(e=>({...e}));
+const loadInq=()=>{const st=store.get(KEY_INQ,[]),ids=new Set(st.map(q=>q.id));return[...SEED_INQ.filter(q=>!ids.has(q.id)).map(q=>({...q})),...st]};
+let inq=loadInq();
+const saveEv=()=>store.set(KEY_EV,events),saveInq=()=>store.set(KEY_INQ,inq);
+
+/* ---------- helpers ---------- */
+const $=s=>document.querySelector(s);
+const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const D=["ne","po","út","st","čt","pá","so"];
+const today=()=>{const d=new Date();d.setHours(0,0,0,0);return d};
+const dOf=e=>new Date(e.datum+"T12:00:00");
+const isPast=e=>e.datum&&dOf(e)<today();
+const img=p=>!p?"":p.startsWith("data:")?p:IMG+p;
+const parseLu=s=>(s||"").split(";").map(x=>x.trim()).filter(Boolean).map(x=>{const m=x.match(/^(.*?)\s+(\d{1,2}:\d{2})\s*-\s*(\d{1,2}:\d{2})$/);return m?{who:m[1],od:m[2],do:m[3]}:{who:x,od:"",do:""}});
+const serLu=a=>a.filter(r=>r.who.trim()).map(r=>r.who.trim()+(r.od&&r.do?` ${r.od}-${r.do}`:"")).join("; ");
+const mins=t=>{const[a,b]=t.split(":").map(Number);return a*60+b};
+const span=(od,dd)=>{if(!od||!dd)return"";let d=mins(dd)-mins(od);if(d<=0)d+=1440;const h=Math.floor(d/60),r=d%60;return(h?h+" h":"")+(r?" "+r+" min":"")};
+function toast(t){const el=document.createElement("div");el.className="toast";el.textContent=t;document.body.appendChild(el);setTimeout(()=>el.remove(),2200)}
+
+/* ---------- tabs ---------- */
+const tabs=$("#tabs");
+function tab(t){tabs.querySelectorAll("button").forEach(b=>b.setAttribute("aria-pressed",b.dataset.t===t));$("#t-ev").hidden=t!=="ev";$("#t-inq").hidden=t!=="inq";
+  const on=tabs.querySelector('[aria-pressed="true"]'),ind=tabs.querySelector(".ind");ind.style.left=on.offsetLeft+"px";ind.style.width=on.offsetWidth+"px"}
+tabs.querySelectorAll("button").forEach(b=>b.onclick=()=>tab(b.dataset.t));
+
+/* ---------- events list ---------- */
+function meTime(e){const me=parseLu(e.lineup).find(x=>/orbith/i.test(x.who));return me&&me.od?me.od+"–"+me.do:""}
+function renderEvents(){
+  const up=events.filter(e=>!isPast(e)).sort((a,b)=>(a.datum||"9")<(b.datum||"9")?-1:1),past=events.filter(isPast).sort((a,b)=>a.datum<b.datum?1:-1);
+  const row=e=>{const d=e.datum?dOf(e):null,t=meTime(e);const b=document.createElement("button");b.type="button";b.className="ev"+(isPast(e)?" past":"");
+    b.innerHTML=`<img src="${img(e.plakat)}" alt=""><span><span class="when">${d?`${D[d.getDay()]} ${d.getDate()}. ${d.getMonth()+1}. ${d.getFullYear()}`:"<span class='warn'>Chybí datum</span>"} · ${t||(isPast(e)?"":"<span class='warn'>čas setu chybí</span>")}</span><b>${esc(e.akce)}</b><small>${esc([e.misto,e.mesto].filter(Boolean).join(", "))}</small></span><span class="btn ghost sm">Upravit</span>`;
+    b.onclick=()=>edit(events.indexOf(e));return b};
+  $("#lUp").replaceChildren(...up.map(row));$("#lPast").replaceChildren(...past.map(row));
+  $("#cUp").textContent=up.length;$("#cPast").textContent=past.length;
+  if(!up.length)$("#lUp").innerHTML='<p class="empty">Žádné nadcházející akce.</p>';
+}
+
+/* ---------- editor ---------- */
+let cur=-1,lu=[],draft={};
+function luRender(){const box=$("#lu");box.innerHTML="";
+  lu.forEach((r,i)=>{const me=/orbith/i.test(r.who),el=document.createElement("div");el.className="lur"+(me?" me":"");
+    el.innerHTML=`<input class="txt" value="${esc(r.who)}" placeholder="Jméno DJe" ${me?"readonly":""} aria-label="DJ"><input type="time" value="${r.od}" aria-label="Od"><input type="time" value="${r.do}" aria-label="Do">${me?"<span></span>":`<button class="x" type="button" aria-label="Odebrat"><svg class="i" width="14" height="14"><use href="#i-x"/></svg></button>`}`;
+    const [n,a,b]=el.querySelectorAll("input");n.oninput=()=>r.who=n.value;a.oninput=()=>{r.od=a.value;lenUpd()};b.oninput=()=>{r.do=b.value;lenUpd()};
+    const x=el.querySelector(".x");if(x)x.onclick=()=>{lu.splice(i,1);luRender()};box.appendChild(el)});lenUpd()}
+function lenUpd(){const me=lu.find(r=>/orbith/i.test(r.who));$("#len").textContent=me&&me.od&&me.do?`Můj set ${me.od}–${me.do} · ${span(me.od,me.do)}`:"Doplňte čas svého setu"}
+$("#addDj").onclick=()=>{lu.push({who:"",od:"",do:""});luRender();$("#lu").lastChild.querySelector("input").focus()};
+function edit(i,pre,igNote){cur=i;const e=i>=0?events[i]:{datum:"",akce:"",misto:"",mesto:"",poradatel:"",plakat:"",odkaz:"",vstupenky:"",lineup:"ORBITH",popis:"",...(pre||{})};draft={...e};
+  $("#sTitle").textContent=i>=0?"Upravit akci":"Nová akce";$("#del").hidden=i<0;
+  $("#pImg").src=img(e.plakat);
+  [["fAkce","akce"],["fDatum","datum"],["fPor","poradatel"],["fMisto","misto"],["fMesto","mesto"],["fVst","vstupenky"],["fOdk","odkaz"],["fPopis","popis"]].forEach(([id,k])=>{const el=$("#"+id);el.value=e[k]||"";el.classList.toggle("from-ig",!!(pre&&pre[k]))});
+  lu=parseLu(e.lineup);if(!lu.some(r=>/orbith/i.test(r.who)))lu.unshift({who:"ORBITH",od:"",do:""});luRender();
+  const n=$("#sNote");n.hidden=!igNote;if(igNote){n.className="note"+(igNote.warn?" warn":"");n.textContent=igNote.text}
+  $("#sheet").hidden=false;document.body.style.overflow="hidden";$("#sheet").scrollTop=0}
+function close(){$("#sheet").hidden=true;document.body.style.overflow=""}
+$("#close").onclick=close;
+$("#pFile").onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{const im=new Image();im.onload=()=>{const c=document.createElement("canvas"),s=Math.min(1,700/Math.max(im.width,im.height));c.width=im.width*s;c.height=im.height*s;c.getContext("2d").drawImage(im,0,0,c.width,c.height);draft.plakat=c.toDataURL("image/jpeg",.8);$("#pImg").src=draft.plakat};im.src=r.result};r.readAsDataURL(f)};
+function doSave(){const e={...draft,akce:$("#fAkce").value.trim(),datum:$("#fDatum").value,poradatel:$("#fPor").value.trim(),misto:$("#fMisto").value.trim(),mesto:$("#fMesto").value.trim(),vstupenky:$("#fVst").value.trim(),odkaz:$("#fOdk").value.trim(),popis:$("#fPopis").value.trim(),lineup:serLu(lu)};
+  if(!e.akce){toast("Doplňte název akce");return}if(!e.datum){toast("Doplňte datum");$("#fDatum").focus();return}
+  delete e.demo;if(cur>=0)events[cur]=e;else events.push(e);saveEv();renderEvents();close();toast("Uloženo, na webu je to hned vidět")}
+$("#save").onclick=doSave;$("#save2").onclick=doSave;
+$("#del").onclick=()=>{if(cur<0)return;const btn=$("#del");if(btn.dataset.sure!=="1"){btn.dataset.sure="1";btn.textContent="Opravdu smazat?";setTimeout(()=>{btn.dataset.sure="";btn.textContent="Smazat akci"},2500);return}
+  events.splice(cur,1);saveEv();renderEvents();close();toast("Akce smazána");btn.dataset.sure="";btn.textContent="Smazat akci"};
+
+/* ---------- import z Instagramu (ukázka: v ostré verzi to dělá server) ---------- */
+const DEMO_POSTS={
+  "Dd_AWAbicpK":{pre:{akce:"Generate Party",misto:"Generator",mesto:"Praha",poradatel:"Generate Prague",plakat:"photo-generate.jpg",odkaz:"https://www.instagram.com/generate_prague/p/Dd_AWAbicpK/",popis:"DJ Orbith always brings the good vibes."},
+    note:{warn:true,text:"Datum ani čas jsem v příspěvku nenašel. Doplňte je prosím, ostatní je předvyplněné z Instagramu (modře orámované)."}}
+};
+function igImport(url){const id=(url.match(/\/(?:p|reel)\/([\w-]+)/)||[])[1];
+  if(!id){toast("Tohle nevypadá jako odkaz na příspěvek");return}
+  const known=events.findIndex(e=>(e.odkaz||"").includes(id));
+  const st=[...document.querySelectorAll(".step")];$("#steps").hidden=false;st.forEach(s=>s.className="step");
+  let k=0;const next=()=>{if(k>0)st[k-1].className="step ok";if(k<st.length){st[k].className="step run";k++;setTimeout(next,650)}else setTimeout(()=>{
+      $("#steps").hidden=true;$("#igUrl").value="";
+      if(known>=0){edit(known,null,{text:"Tahle akce už na webu je, otevřel jsem ji k úpravě."});return}
+      const d=DEMO_POSTS[id]||{pre:{akce:"",odkaz:url,plakat:"poster-amanita.jpg"},note:{warn:true,text:"Z tohohle příspěvku se v ukázce nic načíst nedá. V ostré verzi se doplní plakát a text z popisu."}};
+      edit(-1,d.pre,d.note)},350)};next()}
+$("#igGo").onclick=()=>igImport($("#igUrl").value.trim());
+$("#igUrl").onkeydown=e=>{if(e.key==="Enter")igImport(e.target.value.trim())};
+$("#igDemo").onclick=()=>{$("#igUrl").value="https://www.instagram.com/generate_prague/p/Dd_AWAbicpK/";igImport($("#igUrl").value)};
+$("#manual").onclick=()=>edit(-1);
+
+/* ---------- poptávky ---------- */
+function renderInq(){inq=loadInq();const box=$("#lInq");box.innerHTML="";
+  inq.sort((a,b)=>b.ts-a.ts).forEach(q=>{const el=document.createElement("div");el.className="inq slab";const d=q.datum?new Date(q.datum+"T12:00"):null;
+    el.innerHTML=`<div class="hd"><div><b>${esc(q.name)}</b><br><small>${esc(q.contact)} · ${new Date(q.ts).toLocaleDateString("cs-CZ")}</small></div><span class="st${q.done?" done":""}">${q.done?"Vyřízeno":"Nová"}</span></div>
+      <div class="kv"><span>Akce</span><div>${esc(q.typ)}</div><span>Datum</span><div>${d?`${D[d.getDay()]} ${d.getDate()}. ${d.getMonth()+1}. ${d.getFullYear()}`:"—"}</div><span>Místo</span><div>${esc(q.misto||"—")}</div><span>Hosté</span><div>${esc(q.hoste)}</div><span>Set</span><div>${esc(q.set)}</div></div>
+      ${q.msg?`<div class="msg">${esc(q.msg)}</div>`:""}
+      <div class="act"><a class="btn light sm" href="${/@/.test(q.contact)?"mailto:"+q.contact:"tel:"+q.contact.replace(/\s/g,"")}">Odpovědět</a><button class="btn ghost sm" type="button">${q.done?"Vrátit mezi nové":"Označit jako vyřízené"}</button></div>`;
+    el.querySelector("button").onclick=()=>{q.done=!q.done;saveInq();inq=null;renderInq()};box.appendChild(el)});
+  const n=inq.filter(q=>!q.done).length;$("#nb").textContent=n;$("#nb").hidden=!n}
+$("#reset").onclick=()=>{try{localStorage.removeItem(KEY_EV);localStorage.removeItem(KEY_INQ)}catch(e){}events=EVENTS.map(e=>({...e}));renderEvents();renderInq();toast("Ukázková data obnovena")};
+if(!IMG)$("#toWeb").hidden=true;
+
+renderEvents();renderInq();tab("ev");
+addEventListener("resize",()=>tab(tabs.querySelector('[aria-pressed="true"]').dataset.t));
+document.fonts&&document.fonts.ready.then(()=>tab(tabs.querySelector('[aria-pressed="true"]').dataset.t));
+</script>
+
+</body>
+</html>

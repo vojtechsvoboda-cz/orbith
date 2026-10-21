@@ -213,6 +213,15 @@ section{scroll-margin-top:90px}
 .night .ticks{position:absolute;left:0;right:0;top:30px;display:flex;justify-content:space-between;font-family:var(--f-display);font-size:9.5px;color:var(--dim)}
 .lineup{display:flex;flex-wrap:wrap;gap:8px}
 .lineup .chip.me{background:var(--ice);color:#05070d;border-color:var(--ice)}
+.setbox .t small{display:block;font-size:10px;letter-spacing:.14em;color:var(--glow);text-transform:uppercase;text-align:right;margin-top:8px}
+.sched{display:grid;border:1px solid var(--edge);border-radius:14px;overflow:hidden}
+.srow{display:grid;grid-template-columns:118px 1fr;gap:12px;align-items:center;padding:11px 14px;border-top:1px solid var(--edge);transition:background .2s}
+.srow:first-child{border-top:0}
+.srow span{font-family:var(--f-display);font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
+.srow b{font-weight:500}
+.srow:hover{background:rgba(160,195,255,.05)}
+.srow.me{background:rgba(156,201,255,.1);box-shadow:inset 3px 0 0 var(--glow)}
+.srow.me span,.srow.me b{color:var(--ice)}
 .d-actions{display:flex;flex-wrap:wrap;gap:8px}
 .d-actions button.btn{font:inherit;font-family:var(--f-display);font-size:11px;letter-spacing:.14em}
 .d-note{color:var(--soft)}
@@ -686,6 +695,7 @@ footer a:hover{color:var(--ice)}
     </div>
     <div class="setbox slab">
       <div class="row2"><span class="lbl">Orbith hraje</span><span class="t" id="dSet"></span></div>
+      <span class="demo" id="dDemo" hidden>Časy jsou zatím ukázkové</span>
       <div class="night" id="dNight" hidden></div>
     </div>
     <div><span class="lbl" style="display:block;margin-bottom:12px">Line-up</span><div class="lineup" id="dLineup"></div></div>
@@ -703,12 +713,12 @@ footer a:hover{color:var(--ice)}
 const SHEET_CSV_URL = "";
 
 const EVENTS = [
-  {datum:"2026-10-23",cas:"",akce:"Amanita × Orbith",misto:"Café bar Amanita",mesto:"",poradatel:"Gat Electra",plakat:"poster-amanita.jpg",
-   odkaz:"https://www.instagram.com/gatelectra_official/reel/DeO-hJEse4D/",vstupenky:"",lineup:"ORBITH",popis:"Amanita se po čase znovu otvírá. Obývák a pořádná párty."},
+  {datum:"2026-10-23",cas:"",demo:1,akce:"Amanita × Orbith",misto:"Café bar Amanita",mesto:"",poradatel:"Gat Electra",plakat:"poster-amanita.jpg",
+   odkaz:"https://www.instagram.com/gatelectra_official/reel/DeO-hJEse4D/",vstupenky:"",lineup:"Warm-up 19:00-21:00; ORBITH 21:00-00:00",popis:"Amanita se po čase znovu otvírá. Obývák a pořádná párty."},
   {datum:"2026-10-30",cas:"",akce:"EXIT 11 let · House edice",misto:"EXIT Club",mesto:"Brno",poradatel:"EXIT Club Brno",plakat:"poster-exit11.jpg",
-   odkaz:"https://www.instagram.com/exitclubbrno/p/DeOjf_ssG9p/",vstupenky:"https://www.smsticket.cz",lineup:"Kollektiv Turmstrasse (live); ORBITH; Marcel de Valerio; Elio Audio; Bastien; George the Catholic; Lahvisz",popis:"Narozeninová house edice EXITu, hlavním hostem je Kollektiv Turmstrasse."},
+   odkaz:"https://www.instagram.com/exitclubbrno/p/DeOjf_ssG9p/",vstupenky:"https://www.smsticket.cz",demo:1,lineup:"Lahvisz 21:00-22:00; Bastien 22:00-23:00; ORBITH 23:00-01:00; Kollektiv Turmstrasse (live) 01:00-03:00; Marcel de Valerio 03:00-04:30; Elio Audio; George the Catholic",popis:"Narozeninová house edice EXITu, hlavním hostem je Kollektiv Turmstrasse."},
   {datum:"2026-11-21",cas:"",akce:"People Chase",misto:"Chuchle Arena",mesto:"Praha",poradatel:"People Chase",plakat:"poster-peoplechase.jpg",
-   odkaz:"https://www.instagram.com/peoplechase_events/p/Dd55MU4oiMy/",vstupenky:"https://goout.net",lineup:"ORBITH",popis:"Párty na tribunách v Chuchli. Vstupenky jsou v předprodeji na GoOut."},
+   odkaz:"https://www.instagram.com/peoplechase_events/p/Dd55MU4oiMy/",vstupenky:"https://goout.net",demo:1,lineup:"ORBITH 20:00-21:00",popis:"Párty na tribunách v Chuchli. Vstupenky jsou v předprodeji na GoOut."},
   {datum:"2026-10-10",cas:"",akce:"EXIT Warehouse · Day Rave",misto:"Malá Amerika",mesto:"Brno",poradatel:"EXIT Events",plakat:"poster-warehouse.jpg",set:"2417175753",
    odkaz:"https://www.instagram.com/ales_orbith/reel/DePKcqNoEMV/",lineup:"Kristie Kardio; ORBITH; Oksi; Phil Albedo; Val",popis:"Denní rave v hale na Malé Americe, od 16 do 22 hodin."},
   {datum:"2026-07-04",cas:"",akce:"Beats For Love · Deas b2b Orbith",misto:"Beats For Love",mesto:"Ostrava",poradatel:"Beats For Love",plakat:"sc-bfl26.jpg",set:"2369287130",lineup:"Deas b2b ORBITH",popis:"Společný set s Deasem na festivalu Beats For Love."},
@@ -777,6 +787,7 @@ const EQ=`<span class="eq" aria-hidden="true"><i></i><i></i><i></i></span>`;
 const dur=ms=>{const m=Math.round(ms/60000);return m<60?`${m} min`:`${Math.floor(m/60)} h ${String(m%60).padStart(2,"0")} min`};
 const lineupOf=e=>(e.lineup||"").split(";").map(s=>s.trim()).filter(Boolean).map(s=>{const m=s.match(/^(.*?)\s+(\d{1,2}:\d{2})\s*-\s*(\d{1,2}:\d{2})$/);return m?{who:m[1],od:m[2],do:m[3]}:{who:s,od:"",do:""}});
 /* Orbith's own set time: column "cas" ("23:00-01:00") or his line in the line-up */
+function setLen(t){const m=s=>{const[a,b]=s.split(":").map(Number);return a*60+b};let d=m(t.do)-m(t.od);if(d<=0)d+=1440;const h=Math.floor(d/60),r=d%60;return (h?h+" h":"")+(r?" "+r+" min":"")+" set"}
 function setTime(e){const c=(e.cas||"").match(/(\d{1,2}:\d{2})(?:\s*[-–]\s*(\d{1,2}:\d{2}))?/);if(c)return{od:c[1],do:c[2]||""};const me=lineupOf(e).find(x=>/orbith/i.test(x.who)&&x.od);return me?{od:me.od,do:me.do}:null}
 
 /* ===== Smooth scroll ===== */
@@ -818,7 +829,7 @@ function ploop(){px+=(tx-px)*.18;py+=(ty-py)*.18;peek.style.transform=`translate
 
 /* date block shared by the rail and the list: year / date / weekday · time */
 function whenHTML(e,short){const d=dOf(e),t=setTime(e),day=short?DAYS_S[d.getDay()]:DAYS[d.getDay()];
-  const time=t?`<b>${t.od}</b>`:(isPast(e)?"":"--:--");
+  const time=t?`<b>${short?t.od:t.od+(t.do?"–"+t.do:"")}</b>`:(isPast(e)?"":"--:--");
   return `<span class="y">${d.getFullYear()}</span>${short?`<b>${dot(d)}</b>`:`<span class="big">${dot(d)}</span>`}<span class="dw">${day}${time?` · ${time}`:""}</span>`}
 
 /* ===== Hero rail ===== */
@@ -886,7 +897,7 @@ function openDrawer(e){
   $("#dTitle").textContent=e.akce;
   $("#dWhere").textContent=whereOf(e)+(e.mesto?"":", město upřesníme");
   const lu=lineupOf(e),t=setTime(e),set=$("#dSet");
-  if(t){set.textContent=t.od+(t.do?" – "+t.do:"");set.className="t"}
+  if(t){set.innerHTML=t.od+(t.do?" – "+t.do:"")+(t.do?`<small>${setLen(t)}</small>`:"");set.className="t"}
   else{set.textContent=isPast(e)?"Odehráno":"Čas setu doplníme";set.className="t tbd"}
   const timed=lu.filter(x=>x.od),night=$("#dNight");
   if(timed.length){
@@ -895,9 +906,12 @@ function openDrawer(e){
     const ticks=[];for(let t=s0;t<=e0;t+=sp>360?120:60)ticks.push(String(Math.floor(t/60)%24).padStart(2,"0")+":00");
     night.innerHTML=`<div class="track"></div>${timed.map((x,i)=>{let a=n(x.od),b=n(x.do);if(b<=a)b+=1440;return`<div class="seg-n${/orbith/i.test(x.who)?" me":""}" data-i="${i}" style="left:${(a-s0)/sp*100}%;width:${(b-a)/sp*100}%"></div>`}).join("")}<div class="ticks">${ticks.map(t=>`<span>${t}</span>`).join("")}</div>`;night.hidden=false;
   }else night.hidden=true;
-  const L=$("#dLineup");L.innerHTML="";
-  lu.forEach(x=>{const c=document.createElement("span");c.className="chip"+(/orbith/i.test(x.who)?" me":"");c.textContent=x.who+(x.od?` ${x.od}`:"");
+  const L=$("#dLineup");L.innerHTML="";L.className=timed.length?"sched":"lineup";
+  lu.forEach(x=>{const me=/orbith/i.test(x.who);let c;
+    if(timed.length){c=document.createElement("div");c.className="srow"+(me?" me":"");c.innerHTML=`<span>${x.od?x.od+"–"+x.do:"—"}</span><b>${esc(x.who)}</b>`}
+    else{c=document.createElement("span");c.className="chip"+(me?" me":"");c.textContent=x.who}
     c.onpointerenter=()=>{const s=night.querySelector(`[data-i="${timed.indexOf(x)}"]`);s&&s.classList.add("hl")};c.onpointerleave=()=>night.querySelectorAll(".hl").forEach(s=>s.classList.remove("hl"));L.appendChild(c)});
+  $("#dDemo").hidden=!e.demo;
   $("#dNote").textContent=(e.poradatel?"Pořádá "+e.poradatel+". ":"")+(e.popis||"");
   const A=$("#dActions");A.innerHTML="";
   const add=(html,href,cls)=>{const a=document.createElement("a");a.className="btn "+cls;a.href=href;a.target="_blank";a.rel="noopener";a.innerHTML=html;A.appendChild(a);return a};
@@ -1060,6 +1074,7 @@ $("#form").addEventListener("submit",ev=>{ev.preventDefault();const name=$("#nam
   const rows=[["Akce",s.t],["Datum",dt?`${DAYS[dt.getDay()]} ${dot(dt)} ${sel.y}`:"—"],["Místo",place||"—"],["Hosté",gOut.textContent],["Set",LENS[F.len-1]]];
   $("#recap").innerHTML=rows.map(([k,v])=>`<div><b>${k}</b><span>${esc(v)}</span></div>`).join("");
   $("#doneTxt").textContent=`Odpověď pošlu na ${c}.`;
+  try{const k="orbith_demo_inq",q=JSON.parse(localStorage.getItem(k)||"null")||[];q.push({id:"w"+Date.now(),ts:Date.now(),name,contact:c,typ:s.t,datum:`${sel.y}-${String(sel.m+1).padStart(2,"0")}-${String(sel.d).padStart(2,"0")}`,misto:place,hoste:gOut.textContent,set:LENS[F.len-1],msg:$("#msg").value.trim(),done:false});localStorage.setItem(k,JSON.stringify(q))}catch(e){}
   ["colA","colB","sub"].forEach(id=>$("#"+id).hidden=true);$("#done").hidden=false});
 $("#again").onclick=()=>{["colA","colB","sub"].forEach(id=>$("#"+id).hidden=false);$("#done").hidden=true;renderLen(false);initWheels()};
 
@@ -1075,6 +1090,7 @@ document.getElementById("yr-now").textContent=new Date().getFullYear();
 document.getElementById("hubSpot").href="https://open.spotify.com/artist/"+SPOTIFY_ARTIST;
 function parseCSV(t){const rows=[];let r=[],f="",q=false;for(let i=0;i<t.length;i++){const c=t[i];if(q){if(c=='"'&&t[i+1]=='"'){f+='"';i++}else if(c=='"')q=false;else f+=c}else if(c=='"')q=true;else if(c==','){r.push(f);f=""}else if(c=='\n'){r.push(f);rows.push(r);r=[];f=""}else if(c!='\r')f+=c}if(f||r.length){r.push(f);rows.push(r)}const h=rows.shift().map(s=>s.trim().toLowerCase());return rows.filter(x=>x.join("").trim()).map(x=>Object.fromEntries(h.map((k,i)=>[k,(x[i]||"").trim()])))}
 (async()=>{
+  try{const d=JSON.parse(localStorage.getItem("orbith_demo_events")||"null");if(Array.isArray(d)&&d.length){EVENTS.length=0;EVENTS.push(...d)}}catch(e){}
   if(SHEET_CSV_URL){try{const r=await fetch(SHEET_CSV_URL,{cache:"no-store"});if(r.ok){const rows=parseCSV(await r.text());if(rows.length){EVENTS.length=0;EVENTS.push(...rows)}}}catch(e){}}
   renderRail();renderList();pick("club");renderGuests();initWheels();pickSet(0,false);spy();
   const re=()=>{slideSeg(when,false);slideSeg(lenEl,false);slideSeg(mtab,false);if(spyOn)slide(pillsBox,pills.find(p=>p.dataset.s===spyOn),false);railArrows()};
