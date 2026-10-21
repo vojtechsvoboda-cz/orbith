@@ -1,8 +1,18 @@
 {
-  // Statický web Orbith na Cloudflare Workers (static assets)
+  // Web Orbith na Cloudflare Workers: statický web z ./public + API v src/worker.js
   "name": "orbith",
+  "main": "src/worker.js",
   "compatibility_date": "2025-09-01",
   "assets": {
-    "directory": "./public"
-  }
+    "directory": "./public",
+    "binding": "ASSETS",
+    "run_worker_first": ["/api/*"]
+  },
+  "d1_databases": [
+    { "binding": "DB", "database_name": "orbith", "database_id": "9266a0bf-b8ad-461e-9966-636051db62e4" }
+  ],
+  "observability": { "enabled": true }
+  // E-mail s poptávkou: po zapnutí Email Routingu na orbith.cz odkomentovat
+  // ,"send_email": [{ "name": "MAIL", "destination_address": "ales.gehringer@gmail.com" }]
+  // ,"vars": { "MAIL_FROM": "web@orbith.cz", "MAIL_TO": "ales.gehringer@gmail.com" }
 }

@@ -609,6 +609,7 @@ footer a:hover{color:var(--ice)}
       </div>
 
       <form class="form slab" id="form" novalidate>
+        <input id="web" name="web" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0">
         <div class="col" id="colA">
           <div class="f">
             <span class="lbl" id="tLbl">Typ akce</span>
@@ -829,7 +830,7 @@ function ploop(){px+=(tx-px)*.18;py+=(ty-py)*.18;peek.style.transform=`translate
 
 /* date block shared by the rail and the list: year / date / weekday · time */
 function whenHTML(e,short){const d=dOf(e),t=setTime(e),day=short?DAYS_S[d.getDay()]:DAYS[d.getDay()];
-  const time=t?`<b>${short?t.od:t.od+(t.do?"–"+t.do:"")}</b>`:(isPast(e)?"":"--:--");
+  const time=t?`<b>${short?t.od:t.od+(t.do?"–"+t.do:"")}</b>`:"";
   return `<span class="y">${d.getFullYear()}</span>${short?`<b>${dot(d)}</b>`:`<span class="big">${dot(d)}</span>`}<span class="dw">${day}${time?` · ${time}`:""}</span>`}
 
 /* ===== Hero rail ===== */
@@ -1074,8 +1075,12 @@ $("#form").addEventListener("submit",ev=>{ev.preventDefault();const name=$("#nam
   const rows=[["Akce",s.t],["Datum",dt?`${DAYS[dt.getDay()]} ${dot(dt)} ${sel.y}`:"—"],["Místo",place||"—"],["Hosté",gOut.textContent],["Set",LENS[F.len-1]]];
   $("#recap").innerHTML=rows.map(([k,v])=>`<div><b>${k}</b><span>${esc(v)}</span></div>`).join("");
   $("#doneTxt").textContent=`Odpověď pošlu na ${c}.`;
-  try{const k="orbith_demo_inq",q=JSON.parse(localStorage.getItem(k)||"null")||[];q.push({id:"w"+Date.now(),ts:Date.now(),name,contact:c,typ:s.t,datum:`${sel.y}-${String(sel.m+1).padStart(2,"0")}-${String(sel.d).padStart(2,"0")}`,misto:place,hoste:gOut.textContent,set:LENS[F.len-1],msg:$("#msg").value.trim(),done:false});localStorage.setItem(k,JSON.stringify(q))}catch(e){}
-  ["colA","colB","sub"].forEach(id=>$("#"+id).hidden=true);$("#done").hidden=false});
+  const sb=$("#form").querySelector('[type=submit]');if(sb)sb.disabled=true;
+  fetch("/api/inquiry",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({name,contact:c,typ:s.t,datum:dt?`${sel.y}-${String(sel.m+1).padStart(2,"0")}-${String(sel.d).padStart(2,"0")}`:"",misto:place,hoste:gOut.textContent,set:LENS[F.len-1],msg:$("#msg").value.trim(),web:($("#web")||{}).value||""})})
+    .then(async r=>{if(!r.ok){const d=await r.json().catch(()=>({}));throw new Error(d.error||"")}
+      ["colA","colB","sub"].forEach(id=>$("#"+id).hidden=true);$("#done").hidden=false})
+    .catch(e=>{err.textContent=(e.message?e.message+". ":"")+"Poptávku se nepodařilo odeslat, napište prosím na ales.gehringer@gmail.com."})
+    .finally(()=>{if(sb)sb.disabled=false})});
 $("#again").onclick=()=>{["colA","colB","sub"].forEach(id=>$("#"+id).hidden=false);$("#done").hidden=true;renderLen(false);initWheels()};
 
 /* ===== Scrollspy + top blur ===== */
@@ -1090,8 +1095,10 @@ document.getElementById("yr-now").textContent=new Date().getFullYear();
 document.getElementById("hubSpot").href="https://open.spotify.com/artist/"+SPOTIFY_ARTIST;
 function parseCSV(t){const rows=[];let r=[],f="",q=false;for(let i=0;i<t.length;i++){const c=t[i];if(q){if(c=='"'&&t[i+1]=='"'){f+='"';i++}else if(c=='"')q=false;else f+=c}else if(c=='"')q=true;else if(c==','){r.push(f);f=""}else if(c=='\n'){r.push(f);rows.push(r);r=[];f=""}else if(c!='\r')f+=c}if(f||r.length){r.push(f);rows.push(r)}const h=rows.shift().map(s=>s.trim().toLowerCase());return rows.filter(x=>x.join("").trim()).map(x=>Object.fromEntries(h.map((k,i)=>[k,(x[i]||"").trim()])))}
 (async()=>{
-  try{const d=JSON.parse(localStorage.getItem("orbith_demo_events")||"null");if(Array.isArray(d)&&d.length){EVENTS.length=0;EVENTS.push(...d)}}catch(e){}
+  try{const ac=new AbortController(),t=setTimeout(()=>ac.abort(),4000);const r=await fetch("/api/events",{signal:ac.signal});clearTimeout(t);
+    if(r.ok){const d=await r.json();if(Array.isArray(d)&&d.length){EVENTS.length=0;EVENTS.push(...d)}}}catch(e){}
   if(SHEET_CSV_URL){try{const r=await fetch(SHEET_CSV_URL,{cache:"no-store"});if(r.ok){const rows=parseCSV(await r.text());if(rows.length){EVENTS.length=0;EVENTS.push(...rows)}}}catch(e){}}
+  EVENTS.forEach(e=>{if(!e.plakat)e.plakat="poster-none.svg"});
   renderRail();renderList();pick("club");renderGuests();initWheels();pickSet(0,false);spy();
   const re=()=>{slideSeg(when,false);slideSeg(lenEl,false);slideSeg(mtab,false);if(spyOn)slide(pillsBox,pills.find(p=>p.dataset.s===spyOn),false);railArrows()};
   slideSeg(mtab,false);
