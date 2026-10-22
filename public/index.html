@@ -195,9 +195,15 @@ section{scroll-margin-top:90px}
 .d-poster{position:relative;aspect-ratio:1;overflow:hidden;display:grid;grid-template-rows:100%;place-items:center;background:#000}
 .d-poster .bgblur{position:absolute;inset:-20px;background-size:cover;background-position:center;filter:blur(28px) brightness(.45);transform:scale(1.1)}
 .d-poster img{position:relative;z-index:1;height:84%;width:auto;max-width:90%;object-fit:contain;border-radius:10px;box-shadow:0 20px 50px -10px rgba(0,0,0,.8)}
-.d-poster.zoomable img{cursor:zoom-in;transition:transform .3s cubic-bezier(.2,.8,.2,1)}
+.d-poster.zoomable img{cursor:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20width%3D%2244%22%20height%3D%2244%22%20viewBox%3D%220%200%2044%2044%22%3E%3Ccircle%20cx%3D%2222%22%20cy%3D%2222%22%20r%3D%2220%22%20fill%3D%22rgba%288%2C12%2C23%2C.78%29%22%20stroke%3D%22%239cc9ff%22%20stroke-width%3D%221.5%22/%3E%3Cg%20fill%3D%22none%22%20stroke%3D%22%23e9eefc%22%20stroke-width%3D%221.8%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M24.5%2013h6.5v6.5M19.5%2031H13v-6.5M31%2013l-6.5%206.5M13%2031l6.5-6.5%22/%3E%3C/g%3E%3C/svg%3E") 22 22,zoom-in;transition:transform .3s cubic-bezier(.2,.8,.2,1)}
 .d-poster.zoomable:hover img{transform:scale(1.015)}
-.d-zoom{position:absolute;z-index:2;right:16px;bottom:16px;width:40px;height:40px;border-radius:50%;display:grid;place-items:center;cursor:zoom-in}
+.d-zoom{position:absolute;z-index:2;right:16px;bottom:16px;width:40px;height:40px;border-radius:50%;display:grid;place-items:center;cursor:pointer}
+/* listování mezi akcemi v detailu */
+.d-nav{position:absolute;z-index:3;top:calc(min(540px,100vw)/2 - 22px);width:44px;height:44px;border-radius:50%;display:grid;place-items:center;cursor:pointer;transition:opacity .2s}
+.d-nav.prev{left:12px}.d-nav.next{right:12px}
+.d-nav.prev svg{transform:scaleX(-1)}
+.d-nav[hidden]{display:none}
+.d-count{position:absolute;z-index:3;top:calc(env(safe-area-inset-top,0px) + 26px);left:20px;font-family:var(--f-display);font-size:10.5px;letter-spacing:.14em;color:var(--soft);padding:6px 11px;border-radius:99px;background:rgba(4,6,11,.55);font-variant-numeric:tabular-nums}
 /* lightbox s plakátem */
 .lb{position:fixed;inset:0;z-index:80;background:rgba(2,3,8,.92);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);display:grid;place-items:center;padding:calc(env(safe-area-inset-top,0px) + 64px) 16px calc(env(safe-area-inset-bottom,0px) + 24px);opacity:0;transition:opacity .25s;cursor:zoom-out}
 .lb.on{opacity:1}
@@ -697,6 +703,9 @@ footer a:hover{color:var(--ice)}
 <div class="scrim" id="scrim" hidden></div>
 <aside class="drawer" id="drawer" role="dialog" aria-modal="true" aria-labelledby="dTitle" aria-hidden="true" data-lenis-prevent>
   <button class="d-x glass glowable" type="button" id="dClose" aria-label="Zavřít"><svg class="i"><use href="#i-x"/></svg></button>
+  <span class="d-count" id="dCount" hidden></span>
+  <button class="d-nav prev glass glowable" type="button" id="dPrev" aria-label="Předchozí akce" hidden><svg class="i"><use href="#i-arrow"/></svg></button>
+  <button class="d-nav next glass glowable" type="button" id="dNext" aria-label="Další akce" hidden><svg class="i"><use href="#i-arrow"/></svg></button>
   <div class="d-poster"><div class="bgblur" id="dBg"></div><img id="dImg" alt=""><button class="d-zoom glass glowable" type="button" id="dZoom" aria-label="Zvětšit plakát"><svg class="i"><use href="#i-zoom"/></svg></button></div>
   <div class="d-body">
     <div>
@@ -847,11 +856,11 @@ function whenHTML(e,short){const d=dOf(e),t=setTime(e),day=short?DAYS_S[d.getDay
 const rail=$("#rail");
 function renderRail(){
   rail.innerHTML="";
-  EVENTS.filter(e=>!isPast(e)).sort((a,b)=>dOf(a)-dOf(b)).forEach(e=>{const d=dOf(e);const b=document.createElement("button");b.type="button";b.className="gig glowable";
+  const up=EVENTS.filter(e=>!isPast(e)).sort((a,b)=>dOf(a)-dOf(b));up.forEach(e=>{const d=dOf(e);const b=document.createElement("button");b.type="button";b.className="gig glowable";
     b.innerHTML=`<div class="top"><div class="when">${whenHTML(e,false)}</div><img class="thumb" src="${e.plakat}" alt=""></div>
       <div style="display:grid;gap:4px;min-width:0"><span class="name">${esc(e.akce)}</span><span class="where">${svg("i-pin")}<span>${esc(whereOf(e))}</span></span></div>
       <div class="foot"><span class="soon">${soon(daysBetween(d))}</span><span class="go">${svg("i-arrow")}</span></div>`;
-    b.onclick=()=>openDrawer(e);const th=b.querySelector(".thumb");th.onpointerenter=()=>showPeek(e.plakat);th.onpointerleave=hidePeek;rail.appendChild(b)});
+    b.onclick=()=>openDrawer(e,up);const th=b.querySelector(".thumb");th.onpointerenter=()=>showPeek(e.plakat);th.onpointerleave=hidePeek;rail.appendChild(b)});
   const all=document.createElement("a");all.href="#akce";all.className="gig all glowable";all.innerHTML=`<span class="lbl">Všechny akce</span><span class="go" style="width:40px;height:40px">${svg("i-arrow")}</span>`;rail.appendChild(all);
   railArrows();
 }
@@ -889,7 +898,7 @@ function renderList(){
       <span class="nm"><b>${esc(e.akce)}</b><span>${svg("i-pin")}${esc(e.misto)}${e.set?`<em class="rec">${svg("i-sc")}Záznam setu</em>`:""}</span></span>
       <span class="ct">${e.mesto?`<span class="chip">${esc(e.mesto)}</span>`:`<span class="chip ghost">Místo upřesníme</span>`}</span>
       <span class="go">${svg("i-arrow")}</span>`;
-    r.onclick=()=>openDrawer(e);r.onpointerenter=()=>showPeek(e.plakat);r.onpointerleave=hidePeek;box.appendChild(r)});
+    r.onclick=()=>openDrawer(e,list);r.onpointerenter=()=>showPeek(e.plakat);r.onpointerleave=hidePeek;box.appendChild(r)});
 }
 
 /* smooth re-layout: things slide to their new place, new chips fade in */
@@ -909,8 +918,14 @@ function closeLB(){lb.classList.remove("on");setTimeout(()=>lb.hidden=true,250);
 lb.onclick=closeLB;
 $("#dImg").onclick=()=>{if(drawer.querySelector(".d-poster.zoomable"))openLB()};$("#dZoom").onclick=openLB;
 addEventListener("keydown",e=>{if(e.key==="Escape"&&!lb.hidden){e.stopImmediatePropagation();closeLB()}},true);
-function openDrawer(e){
-  hidePeek();lastF=document.activeElement;const d=dOf(e);
+let dList=[],dIdx=0;
+function openDrawer(e,list){
+  hidePeek();lastF=document.activeElement;dList=list||[e];dIdx=Math.max(0,dList.indexOf(e));fillDrawer(e);
+  scrim.hidden=false;requestAnimationFrame(()=>{scrim.classList.add("on");drawer.classList.add("on")});
+  drawer.setAttribute("aria-hidden","false");drawer.scrollTop=0;lenis&&lenis.stop();document.body.style.overflow="hidden";$("#dClose").focus();
+}
+function fillDrawer(e){
+  const d=dOf(e);
   $("#dImg").src=e.plakat;$("#dImg").alt="Plakát: "+e.akce;$("#dBg").style.backgroundImage=`url(${e.plakat})`;
   $("#dDate").textContent=`${DAYS[d.getDay()]} ${dot(d)} ${d.getFullYear()}`;
   $("#dTitle").textContent=e.akce;
@@ -941,9 +956,22 @@ function openDrawer(e){
   if(!isPast(e)){const ds=e.datum.replace(/-/g,""),nx=new Date(dOf(e).getTime()+864e5),de=nx.getFullYear()+String(nx.getMonth()+1).padStart(2,"0")+String(nx.getDate()).padStart(2,"0");
     add(svg("i-cal")+"Do kalendáře","https://calendar.google.com/calendar/render?action=TEMPLATE&text="+encodeURIComponent("ORBITH · "+e.akce)+"&dates="+ds+"/"+de+"&location="+encodeURIComponent(whereOf(e)),"ghost glowable")}
   drawer.scrollTop=0;{const z=!/poster-none/.test(e.plakat);drawer.querySelector(".d-poster").classList.toggle("zoomable",z);$("#dZoom").hidden=!z}
-  scrim.hidden=false;requestAnimationFrame(()=>{scrim.classList.add("on");drawer.classList.add("on")});
-  drawer.setAttribute("aria-hidden","false");drawer.scrollTop=0;lenis&&lenis.stop();document.body.style.overflow="hidden";$("#dClose").focus();
+  const n=dList.length;$("#dPrev").hidden=dIdx<=0;$("#dNext").hidden=dIdx>=n-1;$("#dCount").hidden=n<2;$("#dCount").textContent=`${dIdx+1} / ${n}`;
 }
+/* Další / předchozí akce: šipky, klávesy ← → a swipe na mobilu */
+let dBusy=false;
+function stepDrawer(dir){const i=dIdx+dir;if(dBusy||i<0||i>=dList.length)return;dBusy=true;
+  const parts=[drawer.querySelector(".d-poster"),drawer.querySelector(".d-body")],ease="cubic-bezier(.2,.8,.2,1)";
+  Promise.all(parts.map(el=>el.animate([{transform:"none",opacity:1},{transform:`translateX(${-dir*40}px)`,opacity:0}],{duration:160,easing:"ease-in",fill:"forwards"}).finished)).then(()=>{
+    dIdx=i;fillDrawer(dList[i]);
+    parts.forEach(el=>{el.getAnimations().forEach(a=>a.cancel());el.animate([{transform:`translateX(${dir*40}px)`,opacity:0},{transform:"none",opacity:1}],{duration:320,easing:ease})});
+    setTimeout(()=>dBusy=false,200)})}
+$("#dPrev").onclick=()=>stepDrawer(-1);$("#dNext").onclick=()=>stepDrawer(1);
+addEventListener("keydown",e=>{if(!drawer.classList.contains("on")||!lb.hidden)return;if(e.key==="ArrowLeft")stepDrawer(-1);if(e.key==="ArrowRight")stepDrawer(1)});
+{let sx=0,sy=0,on=false;
+  drawer.addEventListener("touchstart",e=>{if(e.touches.length!==1)return;sx=e.touches[0].clientX;sy=e.touches[0].clientY;on=true},{passive:true});
+  drawer.addEventListener("touchend",e=>{if(!on)return;on=false;const t=e.changedTouches[0],dx=t.clientX-sx,dy=t.clientY-sy;
+    if(Math.abs(dx)>60&&Math.abs(dx)>Math.abs(dy)*1.6)stepDrawer(dx<0?1:-1)},{passive:true})}
 function closeDrawer(){scrim.classList.remove("on");drawer.classList.remove("on");drawer.setAttribute("aria-hidden","true");document.body.style.overflow="";lenis&&lenis.start();setTimeout(()=>scrim.hidden=true,250);lastF&&lastF.focus()}
 $("#dClose").onclick=closeDrawer;scrim.onclick=closeDrawer;
 addEventListener("keydown",e=>{if(e.key==="Escape"&&drawer.classList.contains("on"))closeDrawer()});
