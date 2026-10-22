@@ -263,7 +263,16 @@ async function importLink(env, url, known) {
 }
 
 // ---------- AI: z textu příspěvku vytáhne údaje o akci (Cloudflare Workers AI) ----------
-const AI_MODEL = "@cf/meta/llama-3.3-70b-instruct-fp8-fast";
+function lev(a, b) {
+  if (Math.abs(a.length - b.length) > 3) return 99;
+  const d = Array.from({ length: b.length + 1 }, (_, i) => i);
+  for (let i = 1; i <= a.length; i++) {
+    let prev = d[0]; d[0] = i;
+    for (let j = 1; j <= b.length; j++) { const t = d[j]; d[j] = Math.min(d[j] + 1, d[j - 1] + 1, prev + (a[i - 1] === b[j - 1] ? 0 : 1)); prev = t; }
+  }
+  return d[b.length];
+}
+const AI_MODEL ="@cf/meta/llama-3.3-70b-instruct-fp8-fast";
 async function withAI(env, out, text, { known, taken, location } = {}) {
   if (!env.AI || !text.trim()) return out;
   const k = known || {};
@@ -293,7 +302,15 @@ Známí pořadatelé: ${(k.orgs || []).slice(0, 60).join(", ") || "—"}`;
   if (Array.isArray(res.lineup)) {
     const lu = res.lineup.map((x) => ({ who: s(typeof x === "string" ? x : x?.jmeno, 60).replace(/;/g, ","), od: tm(x?.od), do: tm(x?.do) }))
       .filter((x) => x.who).map((x) => (/^orbith\b|ale[sš] gehringer/i.test(x.who) ? { ...x, who: "ORBITH" } : x));
-    if (lu.length) ai.lineup = lu.map((x) => x.who + (x.od && x.do ? ` ${x.od}-${x.do}` : "")).join("; ");
+    // AI občas zkomolí písmena ve jménech: vrátíme přesný tvar z původního textu
+    const cands = [...new Set(text.split(/[\n,•|\/;·]+|\s+(?:a|and)\s+/i).map((x) => x.replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N})]+$/gu, "").trim()).filter((x) => x.length > 1 && x.length < 40))];
+    for (const x of lu) {
+      if (x.who === "ORBITH") continue;
+      let best = null, bd = 99;
+      for (const c of cands) { const d = lev(c.toLowerCase(), x.who.toLowerCase()); if (d < bd) { bd = d; best = c; } }
+      if (best && best !== x.who && bd <=Math.max(1, Math.floor(x.who.length / 5))) x.who = best;
+    }
+    if (lu.length) ai.lineup =lu.map((x) => x.who + (x.od && x.do ? ` ${x.od}-${x.do}` : "")).join("; ");
   }
   for (const [key, v] of Object.entries(ai)) if (v) out[key] = v;
   out.ai = true;
