@@ -190,14 +190,15 @@ section{scroll-margin-top:90px}
 /* DRAWER */
 .scrim{position:fixed;inset:0;z-index:60;background:rgba(2,3,8,.66);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);opacity:0;transition:opacity .25s}
 .scrim.on{opacity:1}
-.drawer{position:fixed;top:0;right:0;bottom:0;z-index:61;width:min(540px,100%);background:var(--panel);border-left:1px solid var(--edge);transform:translateX(100%);transition:transform .4s cubic-bezier(.2,.8,.2,1);overflow-y:auto;overscroll-behavior:contain}
+.drawer{position:fixed;top:0;right:0;bottom:0;z-index:61;width:min(540px,100%);background:var(--panel);border-left:1px solid var(--edge);transform:translateX(100%);transition:transform .4s cubic-bezier(.2,.8,.2,1);overflow-y:auto;overscroll-behavior:contain;display:flex;flex-direction:column}
 .drawer.on{transform:none}
-.d-poster{position:relative;aspect-ratio:1;overflow:hidden;display:grid;place-items:center;background:#000}
+/* výšku plakátu dopočítá fitPoster(), aby byl celý detail vidět bez scrollování */
+.d-poster{position:relative;flex:none;height:min(540px,100vw);overflow:hidden;display:grid;place-items:center;background:#000}
 .d-poster .bgblur{position:absolute;inset:-20px;background-size:cover;background-position:center;filter:blur(28px) brightness(.45);transform:scale(1.1)}
 .d-poster img{position:relative;height:84%;width:auto;max-width:90%;border-radius:10px;box-shadow:0 20px 50px -10px rgba(0,0,0,.8)}
 .d-poster::after{content:"";position:absolute;left:0;right:0;bottom:0;height:40%;background:linear-gradient(transparent,var(--panel))}
 .d-x{position:absolute;top:calc(env(safe-area-inset-top,0px) + 14px);right:14px;z-index:3;width:42px;height:42px;border-radius:50%;cursor:pointer;display:grid;place-items:center}
-.d-body{padding:4px 24px calc(env(safe-area-inset-bottom,0px) + 32px);display:grid;gap:24px}
+.d-body{flex:none;padding:4px 24px calc(env(safe-area-inset-bottom,0px) + 28px);display:grid;gap:20px}
 .d-date{font-family:var(--f-display);font-size:12px;letter-spacing:.14em;color:var(--glow);text-transform:uppercase}
 .d-title{font-size:clamp(24px,5vw,30px);line-height:1.15;margin-top:10px}
 .d-where{display:flex;align-items:center;gap:8px;color:var(--muted);margin-top:10px}
@@ -215,7 +216,7 @@ section{scroll-margin-top:90px}
 .lineup .chip.me{background:var(--ice);color:#05070d;border-color:var(--ice)}
 .setbox .t small{display:block;font-size:10px;letter-spacing:.14em;color:var(--glow);text-transform:uppercase;text-align:right;margin-top:8px}
 .sched{display:grid;border:1px solid var(--edge);border-radius:14px;overflow:hidden}
-.srow{display:grid;grid-template-columns:118px 1fr;gap:12px;align-items:center;padding:11px 14px;border-top:1px solid var(--edge);transition:background .2s}
+.srow{display:grid;grid-template-columns:118px 1fr;gap:12px;align-items:center;padding:9px 14px;border-top:1px solid var(--edge);transition:background .2s}
 .srow:first-child{border-top:0}
 .srow span{font-family:var(--f-display);font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
 .srow b{font-weight:500}
@@ -891,6 +892,10 @@ function flip(box,mutate){const key=e=>e.id||e.textContent,sel=".seg,.chip";
 
 /* ===== Drawer ===== */
 const drawer=$("#drawer"),scrim=$("#scrim");let lastF=null;
+/* Plakát zabere jen místo, které zbude pod obsahem. Když se obsah nevejde ani s malým plakátem, plakát zůstane rozumně velký a detail se scrolluje. */
+function fitPoster(){const p=drawer.querySelector(".d-poster"),b=drawer.querySelector(".d-body"),H=drawer.clientHeight,sq=Math.min(drawer.clientWidth,540),free=H-b.offsetHeight;
+  p.style.height=(free>=130?Math.min(sq,free):Math.min(sq,Math.round(H*.42)))+"px"}
+addEventListener("resize",()=>{if(drawer.classList.contains("on"))fitPoster()});
 function openDrawer(e){
   hidePeek();lastF=document.activeElement;const d=dOf(e);
   $("#dImg").src=e.plakat;$("#dImg").alt="Plakát: "+e.akce;$("#dBg").style.backgroundImage=`url(${e.plakat})`;
@@ -922,6 +927,7 @@ function openDrawer(e){
   if(e.mesto||e.misto)add(svg("i-nav")+"Navigovat","https://www.google.com/maps/search/?api=1&query="+encodeURIComponent(e.misto+" "+(e.mesto||"")),"ghost glowable");
   if(!isPast(e)){const ds=e.datum.replace(/-/g,""),nx=new Date(dOf(e).getTime()+864e5),de=nx.getFullYear()+String(nx.getMonth()+1).padStart(2,"0")+String(nx.getDate()).padStart(2,"0");
     add(svg("i-cal")+"Do kalendáře","https://calendar.google.com/calendar/render?action=TEMPLATE&text="+encodeURIComponent("ORBITH · "+e.akce)+"&dates="+ds+"/"+de+"&location="+encodeURIComponent(whereOf(e)),"ghost glowable")}
+  fitPoster();drawer.scrollTop=0;
   scrim.hidden=false;requestAnimationFrame(()=>{scrim.classList.add("on");drawer.classList.add("on")});
   drawer.setAttribute("aria-hidden","false");drawer.scrollTop=0;lenis&&lenis.stop();document.body.style.overflow="hidden";$("#dClose").focus();
 }
