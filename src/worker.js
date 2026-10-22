@@ -103,8 +103,8 @@ async function route(req, env, ctx, url, p) {
   if (p === "/api/admin/import" && m === "POST") {
     const { url, text, known } = await req.json().catch(() => ({}));
     if (text) {
-      const out = parseText(String(text).slice(0, 5000));
-      return json(await withAI(env, out, String(text).slice(0, 5000), { known }));
+      const t = String(text).normalize("NFKC").slice(0, 5000);
+      return json(await withAI(env, parseText(t), t, { known }));
     }
     if (!/^https:\/\/(www\.|m\.|web\.)?(instagram\.com|facebook\.com|fb\.me)\//i.test(url || "")) return bad("Vložte odkaz na příspěvek z Instagramu nebo událost z Facebooku");
     return json(await importLink(env, url, known));
@@ -201,11 +201,12 @@ async function apifyPost(env, code, dbg) {
 
 async function importLink(env, url, known) {
   const out = { odkaz: url }, dbg = [];
-  const code = (url.match(/instagram\.com\/(?:[\w.]+\/)?(?:p|reel|tv)\/([\w-]+)/i) || [])[1];
+  const nf = (x) => String(x || "").normalize("NFKC"); // tučné „𝗗𝗶𝗺𝗲𝗻𝘀𝗶𝗼𝗻“ z Instagramu → běžné písmo
+  const code =(url.match(/instagram\.com\/(?:[\w.]+\/)?(?:p|reel|tv)\/([\w-]+)/i) || [])[1];
   let html = "", title = "", desc = "", image = "", caption = "", postYear = 0, taken = "", location = "";
   const ap = code && env.APIFY_TOKEN ? await apifyPost(env, code, dbg) : null;
   if (ap) {
-    caption = ap.caption; image = ap.image; taken = ap.taken; location = ap.location;
+    caption = nf(ap.caption); image = ap.image; taken = ap.taken; location = ap.location;
     if (taken) postYear = new Date(taken).getFullYear();
   } else {
   html = await grab(code ? `https://www.instagram.com/p/${code}/` : url, "facebookexternalhit/1.1 (+http://www.facebook.com/externalhit_uatext.php)", dbg);
@@ -248,6 +249,7 @@ async function importLink(env, url, known) {
   }
   }
   out.debug = dbg;
+  caption = nf(caption); title = nf(title);
   const text = [title, caption, location ? "Místo: " + location : ""].filter(Boolean).join("\n");
   // Facebook událost: datum bývá ve strukturovaných datech
   const ld = (html.match(/"startDate"\s*:\s*"(\d{4}-\d{2}-\d{2})/) || [])[1] || (html.match(/"start_timestamp"\s*:\s*(\d{9,})/) || [])[1];
