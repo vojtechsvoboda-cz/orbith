@@ -115,8 +115,13 @@ async function route(req, env, ctx, url, p) {
     let host = "";
     try { host = new URL(u).hostname; } catch (e) {}
     if (!/(^|\.)(cdninstagram\.com|fbcdn\.net)$/.test(host)) return bad("Nepovolený zdroj obrázku");
-    const r = await fetch(u, { headers: { "user-agent": BROWSER_UA } });
-    if (!r.ok) return bad("Obrázek se nepodařilo stáhnout", 502);
+    let r = null;
+    for (let i = 0; i < 3; i++) {
+      r = await fetch(u, { headers: { "user-agent": BROWSER_UA, referer: "https://www.instagram.com/", accept: "image/avif,image/webp,image/*,*/*" } });
+      if (r.ok) break;
+      await new Promise((ok) => setTimeout(ok, 700 * (i + 1)));
+    }
+    if (!r.ok) return bad(`Obrázek se nepodařilo stáhnout (${r.status})`, 502);
     return new Response(r.body, { headers: { "content-type": r.headers.get("content-type") || "image/jpeg", "cache-control": "no-store" } });
   }
 
@@ -204,7 +209,10 @@ async function importLink(env, url, known) {
   const nf = (x) => String(x || "").normalize("NFKC"); // tučné „𝗗𝗶𝗺𝗲𝗻𝘀𝗶𝗼𝗻“ z Instagramu → běžné písmo
   const code =(url.match(/instagram\.com\/(?:[\w.]+\/)?(?:p|reel|tv)\/([\w-]+)/i) || [])[1];
   let html = "", title = "", desc = "", image = "", caption = "", postYear = 0, taken = "", location = "";
-  const ap = code && env.APIFY_TOKEN ? await apifyPost(env, code, dbg) : null;
+  // Apify občas napoprvé nic nevrátí (Instagram mu zrovna zablokuje jednu z adres), proto jeden pokus navíc
+  let ap = code && env.APIFY_TOKEN ? await apifyPost(env, code, dbg) : null;
+  if (code && env.APIFY_TOKEN && !ap) ap = await apifyPost(env, code, dbg);
+  if (code && env.APIFY_TOKEN && !ap) out.retry = true;
   if (ap) {
     caption = nf(ap.caption); image = ap.image; taken = ap.taken; location = ap.location;
     if (taken) postYear = new Date(taken).getFullYear();
