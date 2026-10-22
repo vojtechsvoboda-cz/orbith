@@ -110,6 +110,16 @@ async function route(req, env, ctx, url, p) {
     return json(await importLink(env, url, known));
   }
 
+  if (p === "/api/admin/img" && m === "GET") {
+    const u = url.searchParams.get("u") || "";
+    let host = "";
+    try { host = new URL(u).hostname; } catch (e) {}
+    if (!/(^|\.)(cdninstagram\.com|fbcdn\.net)$/.test(host)) return bad("Nepovolený zdroj obrázku");
+    const r = await fetch(u, { headers: { "user-agent": BROWSER_UA } });
+    if (!r.ok) return bad("Obrázek se nepodařilo stáhnout", 502);
+    return new Response(r.body, { headers: { "content-type": r.headers.get("content-type") || "image/jpeg", "cache-control": "no-store" } });
+  }
+
   if (p === "/api/admin/poster" && m === "POST") {
     const mime = (req.headers.get("content-type") || "").split(";")[0];
     if (!/^image\/(jpeg|png|webp)$/.test(mime)) return bad("Plakát musí být obrázek");
@@ -246,20 +256,9 @@ async function importLink(env, url, known) {
   if (/facebook\.com/i.test(url) && title && !/^Facebook$|Log in|Přihlásit/i.test(title)) out.akce = title.trim();
   out.popis = caption.replace(/#\w+/g, "").replace(/\s+\n/g, "\n").trim().slice(0, 600);
   out.text = text;
-  if (image) {
-    try {
-      const r = await fetch(image, { headers: { "user-agent": "Mozilla/5.0" } });
-      const mime = (r.headers.get("content-type") || "").split(";")[0];
-      const buf = await r.arrayBuffer();
-      out.debug.push(`obrázek ${r.status} ${mime} ${buf.byteLength}`);
-      if (r.ok && /^image\/(jpeg|png|webp)$/.test(mime) && buf.byteLength < MAX_POSTER) {
-        const id = uid();
-        await env.DB.prepare("INSERT INTO posters (id,mime,data,created_at) VALUES (?,?,?,?)").bind(id, mime, buf, Date.now()).run();
-        out.plakat = `/api/poster/${id}`;
-      }
-    } catch (e) {}
-  }
-  out.found = ["datum", "akce", "plakat"].filter((k) => out[k]).concat(out.popis ? ["popis"] : []);
+  // plakát stáhne a zmenší až prohlížeč přes /api/admin/img (originály z Instagramu bývají přes limit databáze)
+  if (image) out.plakatSrc = image;
+  out.found = ["datum", "akce", "plakatSrc"].filter((k) => out[k]).concat(out.popis ? ["popis"] : []);
   return caption || title ? withAI(env, out, text, { known, taken, location }) : out;
 }
 
@@ -271,7 +270,7 @@ async function withAI(env, out, text, { known, taken, location } = {}) {
   const today = new Date().toISOString().slice(0, 10);
   const sys = `Z textu příspěvku o hudební akci vytáhni údaje pro web DJe ORBITH (vlastním jménem Aleš Gehringer). Odpověz POUZE platným JSON objektem s klíči:
 {"akce": "název akce nebo prázdný řetězec", "datum": "YYYY-MM-DD nebo prázdné", "misto": "klub / místo konání", "mesto": "město v 1. pádě (Brno, Praha…)", "poradatel": "pořadatel / značka akce", "vstupenky": "URL na vstupenky s https:// nebo prázdné", "lineup": [{"jmeno": "DJ", "od": "HH:MM nebo prázdné", "do": "HH:MM nebo prázdné"}], "popis": "1–2 krátké věty česky o akci, vykání, bez emoji a hashtagů"}
-Pravidla: Nic si nevymýšlej, co v textu není, nech prázdné. Dnes je ${today}${taken ? `, příspěvek byl zveřejněn ${String(taken).slice(0, 10)}` : ""}; když v datu chybí rok, doplň nejbližší budoucí výskyt od data zveřejnění. Line-up: všichni vystupující v pořadí z textu, každý zvlášť („Camo & Krooked“ je jeden projekt), ORBITH nebo Aleš Gehringer zapiš jako "ORBITH". Když název místa nebo pořadatele odpovídá některému ze známých, použij přesně známý tvar.
+Pravidla: Nic si nevymýšlej, co v textu není, nech prázdné. Dnes je ${today}${taken ? `, příspěvek byl zveřejněn ${String(taken).slice(0, 10)}` : ""}; když v datu chybí rok, doplň nejbližší budoucí výskyt od data zveřejnění. Line-up: všichni vystupující v pořadí z textu. Jména opiš PŘESNĚ znak po znaku, nic neopravuj ani nepřekládej. Spojka „a“ nebo „and“ mezi jmény odděluje dva samostatné umělce (např. „Leduy a Mc Daxta“ = „Leduy“ a „Mc Daxta“), ale „&“, „b2b“ a „x“ spojují jeden společný set a zůstávají jedním záznamem („Camo & Krooked“). ORBITH nebo Aleš Gehringer zapiš jako "ORBITH". Název akce: jen pokud ho text opravdu uvádí (např. název série nebo party), jinak prázdné. Když název místa nebo pořadatele odpovídá některému ze známých, použij přesně známý tvar.
 Známé kluby: ${(k.clubs || []).slice(0, 80).join(", ") || "—"}
 Známá města: ${(k.cities || []).slice(0, 40).join(", ") || "—"}
 Známí pořadatelé: ${(k.orgs || []).slice(0, 60).join(", ") || "—"}`;

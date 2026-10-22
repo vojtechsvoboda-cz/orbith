@@ -580,16 +580,18 @@ $("#pPor").onclick=()=>openPicker("Pořadatel",[...lists.orgs].sort((a,b)=>a.loc
 /* plakát */
 function setPoster(src){$("#pImg").src=img(src);$("#pDel").hidden=!src;$("#pHint").hidden=!!src}
 $("#pDel").onclick=()=>{posterBlob=null;posterUrl="";setPoster("");changed()};
-$("#pFile").onchange=ev=>{const f=ev.target.files[0];if(!f)return;const u=URL.createObjectURL(f),im=new Image();
+async function loadRemotePoster(src){try{const r=await fetch("/api/admin/img?u="+encodeURIComponent(src),{credentials:"same-origin"});if(!r.ok)throw 0;usePosterFile(await r.blob())}catch(e){toast("Plakát se nepodařilo stáhnout, nahrajte ho prosím ručně",true)}}
+$("#pFile").onchange=ev=>{const f=ev.target.files[0];if(f)usePosterFile(f)};
+function usePosterFile(f){const u=URL.createObjectURL(f),im=new Image();
   im.onload=()=>{const c=document.createElement("canvas"),s=Math.min(1,1100/Math.max(im.width,im.height));c.width=Math.round(im.width*s);c.height=Math.round(im.height*s);
     c.getContext("2d").drawImage(im,0,0,c.width,c.height);URL.revokeObjectURL(u);
     c.toBlob(b=>{posterBlob=b;if(blobUrl)URL.revokeObjectURL(blobUrl);blobUrl=URL.createObjectURL(b);posterUrl="pending";setPoster(blobUrl);changed()},"image/jpeg",.84)};
-  im.onerror=()=>toast("Tenhle obrázek se nepodařilo načíst",true);im.src=u};
+  im.onerror=()=>toast("Tenhle obrázek se nepodařilo načíst",true);im.src=u}
 
 /* předvyplnění z odkazu */
 function knownLists(){return{clubs:[...lists.clubs].map(([c,m])=>m?`${c} (${m})`:c),cities:[...lists.cities],orgs:[...lists.orgs]}}
 function applyImport(r){const got=[];
-  if(r.plakat&&!posterUrl){posterUrl=r.plakat;posterBlob=null;setPoster(posterUrl);got.push("plakát")}
+  if(r.plakatSrc&&!posterUrl){got.push("plakát");loadRemotePoster(r.plakatSrc)}
   if(r.datum&&!ed.datum){ed.datum=r.datum;showDate();got.push("datum")}
   if(r.akce&&!$("#fAkce").value){$("#fAkce").value=r.akce;got.push("název")}
   if(r.misto&&!ed.misto){const m=[...lists.clubs.keys()].find(c=>norm(c)===norm(r.misto))||r.misto;ed.misto=m;if(!ed.mesto&&lists.clubs.get(m))ed.mesto=lists.clubs.get(m);got.push("klub")}
