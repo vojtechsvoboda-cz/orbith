@@ -188,6 +188,7 @@ input{min-width:0}
 .calh .ibtn:disabled{opacity:.3;cursor:default}
 .calg{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
 .calg .wd{text-align:center;font-family:var(--f-display);font-size:9.5px;letter-spacing:.12em;color:var(--dim);padding:6px 0}
+.calg .pad{aspect-ratio:1;max-height:52px}
 .calg button{position:relative;aspect-ratio:1;max-height:52px;border-radius:12px;border:1px solid transparent;background:transparent;cursor:pointer;font-family:var(--f-display);font-size:13px;color:var(--ice);font-variant-numeric:tabular-nums}
 .calg button:hover{background:rgba(160,195,255,.08)}
 .calg button.past{color:var(--dim)}
@@ -585,9 +586,10 @@ function calDraw(){const [a,b]=calBounds(),first=new Date(calY,calM,1),n=new Dat
   const busy=new Set(events.filter(e=>!cur||e.id!==cur.id).map(e=>e.datum));
   $("#calM").textContent=`${MONTHS[calM]} ${calY}`;
   $("#calPrev").disabled=first<=a;$("#calNext").disabled=first>=b;
-  let h=["po","út","st","čt","pá","so","ne"].map(w=>`<span class="wd">${w}</span>`).join("")+"<span></span>".repeat(off);
+  // vždy 6 řádků, aby kalendář při přepínání měsíců neměnil výšku a šipky zůstaly na místě
+  let h=["po","út","st","čt","pá","so","ne"].map(w=>`<span class="wd">${w}</span>`).join("")+'<span class="pad"></span>'.repeat(off);
   for(let d=1;d<=n;d++){const x=`${calY}-${p2(calM+1)}-${p2(d)}`;h+=`<button type="button" data-d="${x}" class="${x<tIso?"past ":""}${x===tIso?"today ":""}${x===ed.datum?"on ":""}${busy.has(x)?"has":""}" aria-label="${d}. ${calM+1}. ${calY}${busy.has(x)?", už je tam akce":""}">${d}</button>`}
-  $("#calG").innerHTML=h}
+  h+='<span class="pad"></span>'.repeat(42-off-n);$("#calG").innerHTML=h}
 function openCal(){const d=ed.datum?new Date(ed.datum+"T12:00"):today();calY=d.getFullYear();calM=d.getMonth();calDraw();$("#mCal").hidden=false;setTimeout(()=>{const f=$("#calG .on")||$("#calG .today")||$("#calG button");f&&f.focus()},60)}
 $("#calPrev").onclick=()=>{if(--calM<0){calM=11;calY--}calDraw()};
 $("#calNext").onclick=()=>{if(++calM>11){calM=0;calY++}calDraw()};
