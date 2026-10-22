@@ -159,20 +159,40 @@ function guessDate(text, refYear) {
   if ((r = text.match(/\b(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?\b/))) return pick(+r[1], +r[2], r[3] && +r[3]);
   return "";
 }
-async function importLink(env, url) {
-  const out = { odkaz: url };
-  let html = "";
+const BROWSER_UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0 Safari/537.36";
+async function grab(url, ua, dbg) {
   try {
-    const r = await fetch(url, { headers: { "user-agent": "facebookexternalhit/1.1 (+http://www.facebook.com/externalhit_uatext.php)", "accept-language": "cs,en;q=0.8" }, redirect: "follow" });
-    html = await r.text();
-  } catch (e) {}
-  const title = meta(html, "og:title"), desc = meta(html, "og:description") || meta(html, "description"), image = meta(html, "og:image");
+    const r = await fetch(url, { headers: { "user-agent": ua, "accept-language": "cs,en;q=0.8", accept: "text/html,*/*" }, redirect: "follow" });
+    const t = await r.text();
+    dbg.push(`${new URL(url).pathname.slice(0, 40)} ${r.status} ${t.length}`);
+    return r.ok ? t : "";
+  } catch (e) { dbg.push(`${url.slice(0, 50)} chyba`); return ""; }
+}
+const stripTags = (h) => decodeEnt(h.replace(/<br\s*\/?>/gi, "\n").replace(/<[^>]+>/g, "")).trim();
+async function importLink(env, url) {
+  const out = { odkaz: url }, dbg = [];
+  const code = (url.match(/instagram\.com\/(?:[\w.]+\/)?(?:p|reel|tv)\/([\w-]+)/i) || [])[1];
+  let html = await grab(code ? `https://www.instagram.com/p/${code}/` : url, "facebookexternalhit/1.1 (+http://www.facebook.com/externalhit_uatext.php)", dbg);
+  let title = meta(html, "og:title"), desc = meta(html, "og:description") || meta(html, "description"), image = meta(html, "og:image");
   // Instagram: 'X likes, Y comments - user on October 10, 2026: "popisek"'
   let caption = desc, postYear = 0;
   const ig = desc.match(/on ([A-Za-z]+) (\d{1,2}), (\d{4}):\s*"([\s\S]*)"/);
   if (ig) { caption = ig[4]; postYear = +ig[3]; }
   const igTitle = title.match(/on Instagram:\s*"([\s\S]*)"/);
   if (!ig && igTitle) caption = igTitle[1];
+  // Záloha pro Instagram: veřejná stránka pro vložení příspěvku (embed) bývá dostupná i bez přihlášení
+  if (code && (!caption || !image)) {
+    const em = await grab(`https://www.instagram.com/p/${code}/embed/captioned/`, BROWSER_UA, dbg);
+    const cap = (em.match(/<div class="Caption">([\s\S]*?)<div class="CaptionComments">/) || [])[1];
+    if (cap) caption = stripTags(cap.replace(/<a[^>]*class="CaptionUsername"[^>]*>[\s\S]*?<\/a>/, ""));
+    if (!caption) { const j = (em.match(/\\"edge_media_to_caption\\":\{\\"edges\\":\[\{\\"node\\":\{\\"text\\":\\"([\s\S]*?)\\"\}/) || [])[1]; if (j) { try { caption = JSON.parse(`"${j.replace(/\\\\/g, "\\")}"`); } catch (e) { caption = j; } } }
+    const im = (em.match(/<img[^>]+class="EmbeddedMediaImage"[^>]+src="([^"]+)"/) || em.match(/class="EmbeddedMediaImage"[^>]*srcset="([^" ]+)/) || [])[1];
+    if (!image && im) image = decodeEnt(im);
+    if (!image) { const du = (em.match(/\\"display_url\\":\\"([^"\\]+(?:\\\\\/[^"\\]*)*)/) || [])[1]; if (du) image = du.replace(/\\\\\//g, "/").replace(/\\u0026/g, "&"); }
+    const ts = (em.match(/\\"taken_at_timestamp\\":(\d{9,})/) || [])[1];
+    if (ts) postYear = new Date(+ts * 1000).getFullYear();
+  }
+  out.debug = dbg;
   const text = [title, caption].join("\n");
   // Facebook událost: datum bývá ve strukturovaných datech
   const ld = (html.match(/"startDate"\s*:\s*"(\d{4}-\d{2}-\d{2})/) || [])[1] || (html.match(/"start_timestamp"\s*:\s*(\d{9,})/) || [])[1];
@@ -186,6 +206,7 @@ async function importLink(env, url) {
       const r = await fetch(image, { headers: { "user-agent": "Mozilla/5.0" } });
       const mime = (r.headers.get("content-type") || "").split(";")[0];
       const buf = await r.arrayBuffer();
+      out.debug.push(`obrázek ${r.status} ${mime} ${buf.byteLength}`);
       if (r.ok && /^image\/(jpeg|png|webp)$/.test(mime) && buf.byteLength < MAX_POSTER) {
         const id = uid();
         await env.DB.prepare("INSERT INTO posters (id,mime,data,created_at) VALUES (?,?,?,?)").bind(id, mime, buf, Date.now()).run();
