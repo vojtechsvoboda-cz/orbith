@@ -193,6 +193,24 @@ async function importLink(env, url) {
     const ts = (em.match(/\\"taken_at_timestamp\\":(\d{9,})/) || [])[1];
     if (ts) postYear = new Date(+ts * 1000).getFullYear();
   }
+  // Záloha 2: veřejný GraphQL dotaz na příspěvek (stejný, jaký používá web Instagramu bez přihlášení)
+  if (code && (!caption || !image)) {
+    try {
+      const r = await fetch("https://www.instagram.com/graphql/query", {
+        method: "POST",
+        headers: { "content-type": "application/x-www-form-urlencoded", "user-agent": BROWSER_UA, "x-ig-app-id": "936619743392459", "x-fb-lsd": "AVqbxe3J_YA", "x-asbd-id": "129477", "sec-fetch-site": "same-origin" },
+        body: new URLSearchParams({ variables: JSON.stringify({ shortcode: code, fetch_tagged_user_count: null, hoisted_comment_id: null, hoisted_reply_id: null }), doc_id: "8845758582119845", lsd: "AVqbxe3J_YA" }),
+      });
+      const t = await r.text();
+      dbg.push(`graphql ${r.status} ${t.length}`);
+      const md = JSON.parse(t)?.data?.xdt_shortcode_media;
+      if (md) {
+        if (!caption) caption = md.edge_media_to_caption?.edges?.[0]?.node?.text || "";
+        if (!image) image = md.display_url || md.display_resources?.slice(-1)[0]?.src || "";
+        if (md.taken_at_timestamp) postYear = new Date(md.taken_at_timestamp * 1000).getFullYear();
+      }
+    } catch (e) { dbg.push("graphql chyba " + String(e).slice(0, 60)); }
+  }
   out.debug = dbg;
   const text = [title, caption].join("\n");
   // Facebook událost: datum bývá ve strukturovaných datech
