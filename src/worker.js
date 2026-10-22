@@ -17,6 +17,11 @@ export default {
   async fetch(req, env, ctx) {
     const url = new URL(req.url);
     const p = url.pathname;
+    // www.orbith.cz → orbith.cz (jedna hlavní adresa kvůli Googlu)
+    if (url.hostname.startsWith("www.")) {
+      url.hostname = url.hostname.slice(4);
+      return Response.redirect(url.toString(), 301);
+    }
     if (!p.startsWith("/api/")) return env.ASSETS.fetch(req);
     try {
       return await route(req, env, ctx, url, p);
