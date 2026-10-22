@@ -164,7 +164,8 @@ async function grab(url, ua, dbg) {
   try {
     const r = await fetch(url, { headers: { "user-agent": ua, "accept-language": "cs,en;q=0.8", accept: "text/html,*/*" }, redirect: "follow" });
     const t = await r.text();
-    dbg.push(`${new URL(url).pathname.slice(0, 40)} ${r.status} ${t.length}`);
+    const tt = (t.match(/<title[^>]*>([^<]*)/) || [])[1] || "";
+    dbg.push(`${new URL(url).pathname.slice(0, 40)} ${r.status} ${t.length} t=${tt.slice(0, 60)} og=${/og:image/.test(t)} cap=${/class="Caption"/.test(t)} emb=${/EmbeddedMediaImage/.test(t)} du=${/display_url/.test(t)} login=${/loginForm|\/accounts\/login/.test(t)} txt=${/edge_media_to_caption/.test(t)}`);
     return r.ok ? t : "";
   } catch (e) { dbg.push(`${url.slice(0, 50)} chyba`); return ""; }
 }
