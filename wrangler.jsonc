@@ -11,6 +11,7 @@
   "d1_databases": [
     { "binding": "DB", "database_name": "orbith", "database_id": "9266a0bf-b8ad-461e-9966-636051db62e4" }
   ],
+  "ai": { "binding": "AI" },
   "observability": { "enabled": true }
   // E-mail s poptávkou: po zapnutí Email Routingu na orbith.cz odkomentovat
   // ,"send_email": [{ "name": "MAIL", "destination_address": "ales.gehringer@gmail.com" }]

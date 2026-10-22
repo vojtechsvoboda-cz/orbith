@@ -62,7 +62,7 @@ svg.i{width:18px;height:18px;flex:none;fill:none;stroke:currentColor;stroke-widt
 
 input.txt,textarea,input[type=date],input[type=time],input[type=password]{width:100%;background:var(--bg);border:1px solid var(--edge);border-radius:12px;padding:11px 13px;font-size:16px;color:var(--ice)}
 input:focus,textarea:focus{outline:none;border-color:var(--glow);box-shadow:0 0 0 3px rgba(156,201,255,.14)}
-textarea{min-height:80px;resize:vertical}
+textarea{min-height:80px;resize:vertical;overflow:hidden}
 .linkish{background:none;border:0;color:var(--glow);font-size:14px;cursor:pointer;padding:0;text-align:left}
 
 /* seznam akcí */
@@ -84,7 +84,7 @@ textarea{min-height:80px;resize:vertical}
 .sheet{position:fixed;inset:0;z-index:20;background:var(--bg);overflow-y:auto;animation:sheetin .35s cubic-bezier(.22,1,.36,1)}
 @keyframes sheetin{from{transform:translateY(24px)}}
 @keyframes up{from{transform:translateY(30px);opacity:0}}
-.bar{position:sticky;top:0;z-index:5;display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:12px;padding:10px 16px;background:rgba(4,6,11,.86);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-bottom:1px solid var(--edge)}
+.bar{position:sticky;top:0;z-index:5;padding:10px 16px;background:rgba(4,6,11,.86);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-bottom:1px solid var(--edge)}
 .ibtn{width:40px;height:40px;border-radius:50%;border:0;background:transparent;box-shadow:inset 0 0 0 1px var(--edge);display:grid;place-items:center;cursor:pointer;color:var(--ice)}
 .ibtn:hover{box-shadow:inset 0 0 0 1px var(--edge-hi)}
 .sum{min-width:0}
@@ -97,7 +97,7 @@ textarea{min-height:80px;resize:vertical}
 .pill{font-family:var(--f-display);font-size:9px;letter-spacing:.12em;text-transform:uppercase;padding:6px 10px;border-radius:99px;white-space:nowrap;border:1px solid var(--edge);color:var(--muted)}
 .pill.live{color:var(--ok);border-color:rgba(143,227,176,.4)}
 .pill.draft{color:var(--glow);border-color:var(--edge-hi)}
-.ed{max-width:1180px;margin-inline:auto;padding:18px 16px 120px;display:grid;grid-template-columns:minmax(0,1fr) 380px;gap:28px;align-items:start}
+.ed{max-width:1180px;margin-inline:auto;padding:18px 16px 60px;display:grid;grid-template-columns:minmax(0,1fr) 380px;gap:28px;align-items:start}
 .ed-main{display:grid;gap:16px;min-width:0}
 @media (max-width:1000px){.ed{grid-template-columns:minmax(0,1fr);max-width:720px}}
 .note{display:flex;gap:10px;align-items:flex-start;padding:12px 14px;border-radius:12px;background:rgba(156,201,255,.08);border:1px solid var(--edge-hi);font-size:14px;color:var(--soft)}
@@ -166,14 +166,17 @@ input{min-width:0}
 .lur .x[hidden]{display:block!important;visibility:hidden}
 @media (max-width:480px){.tchip{min-width:96px;padding:0 8px;font-size:10.5px}}
 /* spodní lišta s akcemi */
-.abar{position:fixed;left:0;right:0;bottom:0;z-index:6;display:flex;justify-content:flex-end;gap:8px;padding:12px 16px calc(env(safe-area-inset-bottom,0px) + 12px);background:rgba(4,6,11,.9);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-top:1px solid var(--edge)}
-.abar .sp{flex:1}
-.abar .pvb{display:none}
-@media (max-width:1000px){.abar .pvb{display:inline-flex}}
-@media (max-width:520px){.abar{gap:6px;padding-inline:12px}.abar .btn{padding:12px 11px;font-size:9.5px;letter-spacing:.1em}.abar .sp{display:none}.abar .btn.light{flex:1}.abar .pvb{font-size:0;gap:0;padding:12px}}
+/* horní lišta: souhrn nad sloupcem formuláře, tlačítka nad náhledem */
+.bar-in{max-width:1148px;margin-inline:auto;display:grid;grid-template-columns:minmax(0,1fr) 380px;gap:28px;align-items:center}
+.bar-l{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:12px;align-items:center;min-width:0}
+.bar-r{display:flex;gap:8px;justify-content:flex-end}
+.bar-r .pvb{display:none}
+.leave{display:grid;gap:8px;margin-top:4px}
+@media (max-width:1000px){.bar-in{grid-template-columns:minmax(0,1fr);gap:10px}.bar-r .pvb{display:inline-flex}.bar-r .btn.light{flex:1}}
+@media (max-width:520px){.bar{padding-inline:12px}.bar-r{gap:6px}.bar-r .btn{padding:10px 11px;font-size:9px;letter-spacing:.1em}.bar-r .pvb span{display:none}.bar-r .pvb{gap:0}}
 .more-acts{display:flex;gap:8px;flex-wrap:wrap;justify-content:space-between}
 /* náhled akce jako na webu */
-.pv{position:sticky;top:80px;display:grid;gap:10px}
+.pv{position:sticky;top:90px;display:grid;gap:10px}
 .pv .lbl{display:flex;justify-content:space-between;align-items:center}
 .pv-x{display:none}
 .pvd{border-radius:20px;overflow:hidden;border:1px solid var(--edge);background:var(--panel)}
@@ -302,11 +305,18 @@ input{min-width:0}
 </div>
 
 <div class="sheet" id="sheet" hidden>
-  <div class="bar">
-    <button class="ibtn" type="button" id="close" aria-label="Zpět na seznam"><svg class="i"><use href="#i-left"/></svg></button>
-    <div class="sum" aria-live="polite"><b id="sTitle">Nová akce</b><div class="row" id="sRow"></div></div>
-    <span class="pill" id="sPill">Nová</span>
-  </div>
+  <div class="bar"><div class="bar-in">
+    <div class="bar-l">
+      <button class="ibtn" type="button" id="close" aria-label="Zpět na seznam"><svg class="i"><use href="#i-left"/></svg></button>
+      <div class="sum" aria-live="polite"><b id="sTitle">Nová akce</b><div class="row" id="sRow"></div></div>
+      <span class="pill" id="sPill">Nová</span>
+    </div>
+    <div class="bar-r">
+      <button class="btn ghost sm pvb" type="button" id="pvOpen" aria-label="Náhled"><svg class="i" width="15" height="15"><use href="#i-eye"/></svg><span>Náhled</span></button>
+      <button class="btn ghost sm" type="button" id="saveDraft">Uložit koncept</button>
+      <button class="btn light sm" type="button" id="publish">Publikovat na web</button>
+    </div>
+  </div></div>
   <div class="ed">
     <div class="ed-main">
       <div class="slab box imp">
@@ -378,11 +388,17 @@ input{min-width:0}
       <div class="pvd" id="pvd"></div>
     </aside>
   </div>
-  <div class="abar">
-    <button class="btn ghost pvb" type="button" id="pvOpen"><svg class="i" width="15" height="15"><use href="#i-eye"/></svg>Náhled</button>
-    <span class="sp"></span>
-    <button class="btn ghost" type="button" id="saveDraft">Uložit koncept</button>
-    <button class="btn light" type="button" id="publish">Publikovat na web</button>
+</div>
+
+<div class="modal" id="mLeave" hidden>
+  <div class="mbox" role="dialog" aria-modal="true" aria-labelledby="mlTitle">
+    <div class="mhead"><h3 id="mlTitle">Neuložené změny</h3><button class="ibtn" type="button" data-close aria-label="Zpět k úpravám"><svg class="i"><use href="#i-x"/></svg></button></div>
+    <p style="margin:0;color:var(--soft);font-size:15px">Akci jste upravili. Co s ní?</p>
+    <div class="leave">
+      <button class="btn light" type="button" id="lvPub">Publikovat na web</button>
+      <button class="btn ghost" type="button" id="lvDraft">Uložit jako koncept</button>
+      <button class="btn danger" type="button" id="lvDrop">Zahodit změny</button>
+    </div>
   </div>
 </div>
 
@@ -571,36 +587,45 @@ $("#pFile").onchange=ev=>{const f=ev.target.files[0];if(!f)return;const u=URL.cr
   im.onerror=()=>toast("Tenhle obrázek se nepodařilo načíst",true);im.src=u};
 
 /* předvyplnění z odkazu */
+function knownLists(){return{clubs:[...lists.clubs].map(([c,m])=>m?`${c} (${m})`:c),cities:[...lists.cities],orgs:[...lists.orgs]}}
 function applyImport(r){const got=[];
   if(r.plakat&&!posterUrl){posterUrl=r.plakat;posterBlob=null;setPoster(posterUrl);got.push("plakát")}
   if(r.datum&&!ed.datum){ed.datum=r.datum;showDate();got.push("datum")}
   if(r.akce&&!$("#fAkce").value){$("#fAkce").value=r.akce;got.push("název")}
+  if(r.misto&&!ed.misto){const m=[...lists.clubs.keys()].find(c=>norm(c)===norm(r.misto))||r.misto;ed.misto=m;if(!ed.mesto&&lists.clubs.get(m))ed.mesto=lists.clubs.get(m);got.push("klub")}
+  if(r.mesto&&!ed.mesto){ed.mesto=[...lists.cities].find(c=>norm(c)===norm(r.mesto))||r.mesto;got.push("město")}
+  if(r.poradatel&&!ed.poradatel){ed.poradatel=[...lists.orgs].find(c=>norm(c)===norm(r.poradatel))||r.poradatel;got.push("pořadatel")}
   const t=norm(r.text||"");
   if(!ed.misto){const club=[...lists.clubs.keys()].sort((a,b)=>b.length-a.length).find(c=>c.length>2&&t.includes(norm(c)));if(club){ed.misto=club;if(!ed.mesto)ed.mesto=lists.clubs.get(club)||"";got.push("klub")}}
   if(!ed.mesto){const city=[...lists.cities].find(c=>t.includes(norm(c)));if(city){ed.mesto=city;got.push("město")}}
   if(!ed.poradatel){const org=[...lists.orgs].sort((a,b)=>b.length-a.length).find(o=>o.length>2&&t.includes(norm(o)));if(org){ed.poradatel=org;got.push("pořadatel")}}
-  if(r.lineup&&lu.length<=1){const add=parseLu(r.lineup).filter(x=>!isMe(x.who));if(add.length){lu.push(...add);luRender();got.push("line-up")}}
+  if(r.vstupenky&&!$("#fVst").value){$("#fVst").value=r.vstupenky;got.push("vstupenky")}
+  if(r.lineup&&lu.length<=1){const L=parseLu(r.lineup),mi=L.findIndex(x=>isMe(x.who));
+    if(mi>=0){if(!me.od&&L[mi].od){me.od=L[mi].od;me.do=L[mi].do;showTime()}L[mi]=me}else L.unshift(me);
+    if(L.length>1){lu=L;luRender();got.push("line-up")}}
   if(r.popis&&!$("#fPopis").value){$("#fPopis").value=r.popis;got.push("popis")}
   placeUi();changed();return got}
 function impMsg(got,fail){const note=$("#impNote");note.className="note"+(got.length?"":" warn");
   note.textContent=got.length?`Doplnil jsem: ${got.join(", ")}. Zkontrolujte to a doplňte čas svého setu.`:fail;note.hidden=false}
 async function doImport(){const url=$("#fOdk").value.trim(),btn=$("#impGo");if(!url){$("#fOdk").focus();return}
-  btn.disabled=true;btn.innerHTML='<span class="spin"></span>Načítám';$("#impNote").hidden=true;
-  try{const r=await api("admin/import",{method:"POST",body:JSON.stringify({url})}),got=applyImport(r);
+  btn.disabled=true;btn.innerHTML='<span class="spin"></span>Načítám…';$("#impHint").textContent="Stahuji příspěvek a čtu z něj údaje, trvá to obvykle 10–30 sekund.";$("#impNote").hidden=true;
+  try{const r=await api("admin/import",{method:"POST",body:JSON.stringify({url,known:knownLists()})}),got=applyImport(r);
     impMsg(got,"Instagram načtení ze serveru nepustil. Odkaz zůstane uložený. Zkopírujte text příspěvku a vložte ho níž, datum, klub a line-up se z něj vytáhnou. Plakát si uložte z Instagramu a nahrajte.");
     if(!got.length){$("#impTxtBox").hidden=false;$("#impTxtShow").hidden=true}}
   catch(e){if(e.message!=="auth")impMsg([],e.message)}
   finally{btn.disabled=false;btn.textContent="Předvyplnit"}}
 $("#impTxtShow").onclick=()=>{$("#impTxtBox").hidden=false;$("#impTxtShow").hidden=true;$("#impText").focus()};
 $("#impTxtGo").onclick=async()=>{const text=$("#impText").value.trim();if(!text){$("#impText").focus();return}
-  try{const r=await api("admin/import",{method:"POST",body:JSON.stringify({text})});impMsg(applyImport(r),"V textu jsem nenašel datum, klub ani line-up. Vyplňte prosím ručně.")}
+  try{const r=await api("admin/import",{method:"POST",body:JSON.stringify({text,known:knownLists()})});impMsg(applyImport(r),"V textu jsem nenašel datum, klub ani line-up. Vyplňte prosím ručně.")}
   catch(e){if(e.message!=="auth")impMsg([],e.message)}};
+function grow(el){el.style.height="auto";el.style.height=Math.min(el.scrollHeight+2,window.innerHeight*.7)+"px"}
+["impText","fPopis"].forEach(id=>{const el=$("#"+id);el.addEventListener("input",()=>grow(el));el.addEventListener("paste",()=>setTimeout(()=>grow(el),0))});
 $("#impGo").onclick=doImport;$("#fOdk").onkeydown=e=>{if(e.key==="Enter"){e.preventDefault();doImport()}};
 
 /* souhrn nahoře + náhled */
 function collect(){return{...(cur||{}),...ed,akce:$("#fAkce").value.trim(),vstupenky:$("#fVst").value.trim(),odkaz:$("#fOdk").value.trim(),popis:$("#fPopis").value.trim(),lineup:serLu(lu)}}
 const fmtShort=iso=>{const d=new Date(iso+"T12:00");return`${D[d.getDay()]} ${d.getDate()}. ${d.getMonth()+1}.`};
-function changed(){const e=collect(),row=[];
+function changed(){const e=collect(),row=[];requestAnimationFrame(()=>{grow($("#fPopis"));grow($("#impText"))});
   $("#sTitle").textContent=e.akce||e.misto||(cur?"Akce":"Nová akce");
   row.push(e.datum?`<span>${fmtShort(e.datum)}${e.datum.slice(0,4)!=String(Y0)?" "+e.datum.slice(0,4):""}</span>`:`<span class="miss">bez data</span>`);
   row.push(me.od?`<span>${me.od}–${me.do}</span>`:`<span class="miss">bez času</span>`);
@@ -630,9 +655,12 @@ function edit(e,copy){cur=copy?null:(e||null);const x=e||{};
   $("#sheet").hidden=false;$("#sheet").scrollTop=0;document.body.style.overflow="hidden";$("#pv").classList.remove("show");
   showDate();showTime();luRender();placeUi();changed();snap0=JSON.stringify([collect(),posterUrl]);
   if(copy)toast("Kopie akce: zvolte nové datum")}
-let sureClose=0;
-function close(force){if(!force&&JSON.stringify([collect(),posterUrl])!==snap0&&Date.now()-sureClose>3000){sureClose=Date.now();toast("Máte neuložené změny. Klikněte znovu pro zahození.",true);return}
-  $("#sheet").hidden=true;document.body.style.overflow=""}
+function dirty(){return JSON.stringify([collect(),posterUrl])!==snap0}
+function close(force){if(!force&&dirty()){$("#mLeave").hidden=false;setTimeout(()=>$("#lvPub").focus(),50);return}
+  $("#mLeave").hidden=true;$("#sheet").hidden=true;document.body.style.overflow=""}
+$("#lvPub").onclick=()=>{$("#mLeave").hidden=true;save("published")};
+$("#lvDraft").onclick=()=>{$("#mLeave").hidden=true;save("draft")};
+$("#lvDrop").onclick=()=>close(true);
 $("#close").onclick=()=>close();
 $("#addEv").onclick=()=>edit(null);
 $("#dup").onclick=()=>{const c=collect();edit({...c,plakat:posterUrl==="pending"?"":posterUrl},true)};

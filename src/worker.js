@@ -101,10 +101,13 @@ async function route(req, env, ctx, url, p) {
   }
 
   if (p === "/api/admin/import" && m === "POST") {
-    const { url, text } = await req.json().catch(() => ({}));
-    if (text) return json(parseText(String(text).slice(0, 5000)));
+    const { url, text, known } = await req.json().catch(() => ({}));
+    if (text) {
+      const out = parseText(String(text).slice(0, 5000));
+      return json(await withAI(env, out, String(text).slice(0, 5000), { known }));
+    }
     if (!/^https:\/\/(www\.|m\.|web\.)?(instagram\.com|facebook\.com|fb\.me)\//i.test(url || "")) return bad("Vložte odkaz na příspěvek z Instagramu nebo událost z Facebooku");
-    return json(await importLink(env, url));
+    return json(await importLink(env, url, known));
   }
 
   if (p === "/api/admin/poster" && m === "POST") {
@@ -171,13 +174,34 @@ async function grab(url, ua, dbg) {
   } catch (e) { dbg.push(`${url.slice(0, 50)} chyba`); return ""; }
 }
 const stripTags = (h) => decodeEnt(h.replace(/<br\s*\/?>/gi, "\n").replace(/<[^>]+>/g, "")).trim();
-async function importLink(env, url) {
+// Apify: stáhne příspěvek z Instagramu (Instagram servery Cloudflaru brzdí, Apify ne)
+async function apifyPost(env, code, dbg) {
+  try {
+    const r = await fetch(`https://api.apify.com/v2/acts/apify~instagram-scraper/run-sync-get-dataset-items?token=${encodeURIComponent(env.APIFY_TOKEN)}&timeout=90`, {
+      method: "POST", headers: { "content-type": "application/json" },
+      body: JSON.stringify({ directUrls: [`https://www.instagram.com/p/${code}/`], resultsType: "posts", resultsLimit: 1, addParentData: false }),
+    });
+    const t = await r.text();
+    dbg.push(`apify ${r.status} ${t.length}`);
+    const it = JSON.parse(t)?.[0];
+    if (!it || it.error) { if (it?.error) dbg.push("apify: " + String(it.error).slice(0, 80)); return null; }
+    return { caption: it.caption || "", image: it.displayUrl || it.images?.[0] || "", taken: it.timestamp || "", location: it.locationName || "", owner: it.ownerFullName || it.ownerUsername || "" };
+  } catch (e) { dbg.push("apify chyba " + String(e).slice(0, 60)); return null; }
+}
+
+async function importLink(env, url, known) {
   const out = { odkaz: url }, dbg = [];
   const code = (url.match(/instagram\.com\/(?:[\w.]+\/)?(?:p|reel|tv)\/([\w-]+)/i) || [])[1];
-  let html = await grab(code ? `https://www.instagram.com/p/${code}/` : url, "facebookexternalhit/1.1 (+http://www.facebook.com/externalhit_uatext.php)", dbg);
-  let title = meta(html, "og:title"), desc = meta(html, "og:description") || meta(html, "description"), image = meta(html, "og:image");
+  let html = "", title = "", desc = "", image = "", caption = "", postYear = 0, taken = "", location = "";
+  const ap = code && env.APIFY_TOKEN ? await apifyPost(env, code, dbg) : null;
+  if (ap) {
+    caption = ap.caption; image = ap.image; taken = ap.taken; location = ap.location;
+    if (taken) postYear = new Date(taken).getFullYear();
+  } else {
+  html = await grab(code ? `https://www.instagram.com/p/${code}/` : url, "facebookexternalhit/1.1 (+http://www.facebook.com/externalhit_uatext.php)", dbg);
+  title = meta(html, "og:title"); desc = meta(html, "og:description") || meta(html, "description"); image = meta(html, "og:image");
   // Instagram: 'X likes, Y comments - user on October 10, 2026: "popisek"'
-  let caption = desc, postYear = 0;
+  caption = desc;
   const ig = desc.match(/on ([A-Za-z]+) (\d{1,2}), (\d{4}):\s*"([\s\S]*)"/);
   if (ig) { caption = ig[4]; postYear = +ig[3]; }
   const igTitle = title.match(/on Instagram:\s*"([\s\S]*)"/);
@@ -212,8 +236,9 @@ async function importLink(env, url) {
       }
     } catch (e) { dbg.push("graphql chyba " + String(e).slice(0, 60)); }
   }
+  }
   out.debug = dbg;
-  const text = [title, caption].join("\n");
+  const text = [title, caption, location ? "Místo: " + location : ""].filter(Boolean).join("\n");
   // Facebook událost: datum bývá ve strukturovaných datech
   const ld = (html.match(/"startDate"\s*:\s*"(\d{4}-\d{2}-\d{2})/) || [])[1] || (html.match(/"start_timestamp"\s*:\s*(\d{9,})/) || [])[1];
   if (ld) out.datum = /^\d{4}/.test(ld) ? ld : new Date(+ld * 1000).toISOString().slice(0, 10);
@@ -235,6 +260,44 @@ async function importLink(env, url) {
     } catch (e) {}
   }
   out.found = ["datum", "akce", "plakat"].filter((k) => out[k]).concat(out.popis ? ["popis"] : []);
+  return caption || title ? withAI(env, out, text, { known, taken, location }) : out;
+}
+
+// ---------- AI: z textu příspěvku vytáhne údaje o akci (Cloudflare Workers AI) ----------
+const AI_MODEL = "@cf/meta/llama-3.3-70b-instruct-fp8-fast";
+async function withAI(env, out, text, { known, taken, location } = {}) {
+  if (!env.AI || !text.trim()) return out;
+  const k = known || {};
+  const today = new Date().toISOString().slice(0, 10);
+  const sys = `Z textu příspěvku o hudební akci vytáhni údaje pro web DJe ORBITH (vlastním jménem Aleš Gehringer). Odpověz POUZE platným JSON objektem s klíči:
+{"akce": "název akce nebo prázdný řetězec", "datum": "YYYY-MM-DD nebo prázdné", "misto": "klub / místo konání", "mesto": "město v 1. pádě (Brno, Praha…)", "poradatel": "pořadatel / značka akce", "vstupenky": "URL na vstupenky s https:// nebo prázdné", "lineup": [{"jmeno": "DJ", "od": "HH:MM nebo prázdné", "do": "HH:MM nebo prázdné"}], "popis": "1–2 krátké věty česky o akci, vykání, bez emoji a hashtagů"}
+Pravidla: Nic si nevymýšlej, co v textu není, nech prázdné. Dnes je ${today}${taken ? `, příspěvek byl zveřejněn ${String(taken).slice(0, 10)}` : ""}; když v datu chybí rok, doplň nejbližší budoucí výskyt od data zveřejnění. Line-up: všichni vystupující v pořadí z textu, každý zvlášť („Camo & Krooked“ je jeden projekt), ORBITH nebo Aleš Gehringer zapiš jako "ORBITH". Když název místa nebo pořadatele odpovídá některému ze známých, použij přesně známý tvar.
+Známé kluby: ${(k.clubs || []).slice(0, 80).join(", ") || "—"}
+Známá města: ${(k.cities || []).slice(0, 40).join(", ") || "—"}
+Známí pořadatelé: ${(k.orgs || []).slice(0, 60).join(", ") || "—"}`;
+  const user = (location ? `Místo označené u příspěvku: ${location}\n` : "") + "Text příspěvku:\n" + text.slice(0, 4000);
+  let res = null;
+  try {
+    const r = await env.AI.run(AI_MODEL, { messages: [{ role: "system", content: sys }, { role: "user", content: user }], max_tokens: 900, temperature: 0.1, response_format: { type: "json_object" } });
+    res = typeof r.response === "string" ? JSON.parse((r.response.match(/\{[\s\S]*\}/) || ["{}"])[0]) : r.response;
+  } catch (e) {
+    (out.debug ||= []).push("ai chyba " + String(e).slice(0, 80));
+    return out;
+  }
+  if (!res || typeof res !== "object") return out;
+  const s = (v, n = 300) => (typeof v === "string" ? v.trim().slice(0, n) : "");
+  const tm = (v) => (/^\d{1,2}:\d{2}$/.test(s(v)) ? s(v).padStart(5, "0") : "");
+  const ai = { akce: s(res.akce, 120), misto: s(res.misto, 120), mesto: s(res.mesto, 60), poradatel: s(res.poradatel, 120), vstupenky: s(res.vstupenky, 300), popis: s(res.popis, 500) };
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s(res.datum))) ai.datum = s(res.datum);
+  if (ai.vstupenky && !/^https?:\/\//.test(ai.vstupenky)) ai.vstupenky = "https://" + ai.vstupenky.replace(/^\/+/, "");
+  if (ai.vstupenky && !/^https?:\/\/[\w.-]+\.[a-z]{2,}/i.test(ai.vstupenky)) ai.vstupenky = "";
+  if (Array.isArray(res.lineup)) {
+    const lu = res.lineup.map((x) => ({ who: s(typeof x === "string" ? x : x?.jmeno, 60).replace(/;/g, ","), od: tm(x?.od), do: tm(x?.do) }))
+      .filter((x) => x.who).map((x) => (/^orbith\b|ale[sš] gehringer/i.test(x.who) ? { ...x, who: "ORBITH" } : x));
+    if (lu.length) ai.lineup = lu.map((x) => x.who + (x.od && x.do ? ` ${x.od}-${x.do}` : "")).join("; ");
+  }
+  for (const [key, v] of Object.entries(ai)) if (v) out[key] = v;
+  out.ai = true;
   return out;
 }
 
