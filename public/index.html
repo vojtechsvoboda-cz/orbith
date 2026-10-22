@@ -190,15 +190,23 @@ section{scroll-margin-top:90px}
 /* DRAWER */
 .scrim{position:fixed;inset:0;z-index:60;background:rgba(2,3,8,.66);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);opacity:0;transition:opacity .25s}
 .scrim.on{opacity:1}
-.drawer{position:fixed;top:0;right:0;bottom:0;z-index:61;width:min(540px,100%);background:var(--panel);border-left:1px solid var(--edge);transform:translateX(100%);transition:transform .4s cubic-bezier(.2,.8,.2,1);overflow-y:auto;overscroll-behavior:contain;display:flex;flex-direction:column}
+.drawer{position:fixed;top:0;right:0;bottom:0;z-index:61;width:min(540px,100%);background:var(--panel);border-left:1px solid var(--edge);transform:translateX(100%);transition:transform .4s cubic-bezier(.2,.8,.2,1);overflow-y:auto;overscroll-behavior:contain}
 .drawer.on{transform:none}
-/* výšku plakátu dopočítá fitPoster(), aby byl celý detail vidět bez scrollování */
-.d-poster{position:relative;flex:none;height:min(540px,100vw);padding:22px 0 6px;box-sizing:border-box;overflow:hidden;display:grid;grid-template-rows:100%;place-items:center;background:#000}
+.d-poster{position:relative;aspect-ratio:1;overflow:hidden;display:grid;grid-template-rows:100%;place-items:center;background:#000}
 .d-poster .bgblur{position:absolute;inset:-20px;background-size:cover;background-position:center;filter:blur(28px) brightness(.45);transform:scale(1.1)}
-.d-poster img{position:relative;z-index:1;height:100%;width:auto;max-width:90%;object-fit:contain;border-radius:10px;box-shadow:0 20px 50px -10px rgba(0,0,0,.8)}
+.d-poster img{position:relative;z-index:1;height:84%;width:auto;max-width:90%;object-fit:contain;border-radius:10px;box-shadow:0 20px 50px -10px rgba(0,0,0,.8)}
+.d-poster.zoomable img{cursor:zoom-in;transition:transform .3s cubic-bezier(.2,.8,.2,1)}
+.d-poster.zoomable:hover img{transform:scale(1.015)}
+.d-zoom{position:absolute;z-index:2;right:16px;bottom:16px;width:40px;height:40px;border-radius:50%;display:grid;place-items:center;cursor:zoom-in}
+/* lightbox s plakátem */
+.lb{position:fixed;inset:0;z-index:80;background:rgba(2,3,8,.92);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);display:grid;place-items:center;padding:calc(env(safe-area-inset-top,0px) + 64px) 16px calc(env(safe-area-inset-bottom,0px) + 24px);opacity:0;transition:opacity .25s;cursor:zoom-out}
+.lb.on{opacity:1}
+.lb img{max-width:100%;max-height:100%;object-fit:contain;border-radius:12px;box-shadow:0 30px 80px -20px rgba(0,0,0,.9);transform:scale(.96);transition:transform .3s cubic-bezier(.2,.8,.2,1)}
+.lb.on img{transform:none}
+.lb .d-x{position:fixed}
 .d-poster::after{content:"";position:absolute;left:0;right:0;bottom:0;height:40%;background:linear-gradient(transparent,var(--panel))}
 .d-x{position:absolute;top:calc(env(safe-area-inset-top,0px) + 14px);right:14px;z-index:3;width:42px;height:42px;border-radius:50%;cursor:pointer;display:grid;place-items:center}
-.d-body{flex:none;padding:4px 24px calc(env(safe-area-inset-bottom,0px) + 28px);display:grid;gap:20px}
+.d-body{padding:4px 24px calc(env(safe-area-inset-bottom,0px) + 32px);display:grid;gap:24px}
 .d-date{font-family:var(--f-display);font-size:12px;letter-spacing:.14em;color:var(--glow);text-transform:uppercase}
 .d-title{font-size:clamp(24px,5vw,30px);line-height:1.15;margin-top:10px}
 .d-where{display:flex;align-items:center;gap:8px;color:var(--muted);margin-top:10px}
@@ -216,7 +224,7 @@ section{scroll-margin-top:90px}
 .lineup .chip.me{background:var(--ice);color:#05070d;border-color:var(--ice)}
 .setbox .t small{display:block;font-size:10px;letter-spacing:.14em;color:var(--glow);text-transform:uppercase;text-align:right;margin-top:8px}
 .sched{display:grid;border:1px solid var(--edge);border-radius:14px;overflow:hidden}
-.srow{display:grid;grid-template-columns:118px 1fr;gap:12px;align-items:center;padding:9px 14px;border-top:1px solid var(--edge);transition:background .2s}
+.srow{display:grid;grid-template-columns:118px 1fr;gap:12px;align-items:center;padding:11px 14px;border-top:1px solid var(--edge);transition:background .2s}
 .srow:first-child{border-top:0}
 .srow span{font-family:var(--f-display);font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
 .srow b{font-weight:500}
@@ -446,6 +454,7 @@ footer a:hover{color:var(--ice)}
     <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></symbol>
     <symbol id="i-left" viewBox="0 0 24 24"><path d="M19 12H5M11 6l-6 6 6 6"/></symbol>
     <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></symbol>
+    <symbol id="i-zoom" viewBox="0 0 24 24"><path d="M15 4h5v5M9 20H4v-5M20 4l-6 6M4 20l6-6"/></symbol>
     <symbol id="i-cal" viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15" rx="3"/><path d="M3.5 10h17M8 3v4M16 3v4"/></symbol>
     <symbol id="i-nav" viewBox="0 0 24 24"><path d="M3 11l18-8-8 18-2-8z"/></symbol>
     <symbol id="i-play" viewBox="0 0 24 24"><path d="M8 5l11 7-11 7z" fill="currentColor" stroke="none"/></symbol>
@@ -688,7 +697,7 @@ footer a:hover{color:var(--ice)}
 <div class="scrim" id="scrim" hidden></div>
 <aside class="drawer" id="drawer" role="dialog" aria-modal="true" aria-labelledby="dTitle" aria-hidden="true" data-lenis-prevent>
   <button class="d-x glass glowable" type="button" id="dClose" aria-label="Zavřít"><svg class="i"><use href="#i-x"/></svg></button>
-  <div class="d-poster"><div class="bgblur" id="dBg"></div><img id="dImg" alt=""></div>
+  <div class="d-poster"><div class="bgblur" id="dBg"></div><img id="dImg" alt=""><button class="d-zoom glass glowable" type="button" id="dZoom" aria-label="Zvětšit plakát"><svg class="i"><use href="#i-zoom"/></svg></button></div>
   <div class="d-body">
     <div>
       <div class="d-date" id="dDate"></div>
@@ -892,10 +901,14 @@ function flip(box,mutate){const key=e=>e.id||e.textContent,sel=".seg,.chip";
 
 /* ===== Drawer ===== */
 const drawer=$("#drawer"),scrim=$("#scrim");let lastF=null;
-/* Plakát zabere jen místo, které zbude pod obsahem. Když se obsah nevejde ani s malým plakátem, plakát zůstane rozumně velký a detail se scrolluje. */
-function fitPoster(){const p=drawer.querySelector(".d-poster"),b=drawer.querySelector(".d-body"),H=drawer.clientHeight,sq=Math.min(drawer.clientWidth,540),free=H-b.offsetHeight;
-  p.style.height=(free>=130?Math.min(sq,free):Math.min(sq,Math.round(H*.42)))+"px"}
-addEventListener("resize",()=>{if(drawer.classList.contains("on"))fitPoster()});
+/* Lightbox: klik na plakát v detailu ho zobrazí přes celou obrazovku */
+const lb=document.createElement("div");lb.className="lb";lb.hidden=true;lb.setAttribute("role","dialog");lb.setAttribute("aria-modal","true");lb.setAttribute("aria-label","Plakát");
+lb.innerHTML=`<button class="d-x glass glowable" type="button" aria-label="Zavřít plakát"><svg class="i"><use href="#i-x"/></svg></button><img alt="">`;document.body.appendChild(lb);
+function openLB(){const src=$("#dImg").src;if(!src||/poster-none/.test(src))return;lb.querySelector("img").src=src;lb.querySelector("img").alt=$("#dImg").alt;lb.hidden=false;requestAnimationFrame(()=>lb.classList.add("on"));lb.querySelector("button").focus()}
+function closeLB(){lb.classList.remove("on");setTimeout(()=>lb.hidden=true,250);$("#dZoom")&&$("#dZoom").focus()}
+lb.onclick=closeLB;
+$("#dImg").onclick=()=>{if(drawer.querySelector(".d-poster.zoomable"))openLB()};$("#dZoom").onclick=openLB;
+addEventListener("keydown",e=>{if(e.key==="Escape"&&!lb.hidden){e.stopImmediatePropagation();closeLB()}},true);
 function openDrawer(e){
   hidePeek();lastF=document.activeElement;const d=dOf(e);
   $("#dImg").src=e.plakat;$("#dImg").alt="Plakát: "+e.akce;$("#dBg").style.backgroundImage=`url(${e.plakat})`;
@@ -927,7 +940,7 @@ function openDrawer(e){
   if(e.mesto||e.misto)add(svg("i-nav")+"Navigovat","https://www.google.com/maps/search/?api=1&query="+encodeURIComponent(e.misto+" "+(e.mesto||"")),"ghost glowable");
   if(!isPast(e)){const ds=e.datum.replace(/-/g,""),nx=new Date(dOf(e).getTime()+864e5),de=nx.getFullYear()+String(nx.getMonth()+1).padStart(2,"0")+String(nx.getDate()).padStart(2,"0");
     add(svg("i-cal")+"Do kalendáře","https://calendar.google.com/calendar/render?action=TEMPLATE&text="+encodeURIComponent("ORBITH · "+e.akce)+"&dates="+ds+"/"+de+"&location="+encodeURIComponent(whereOf(e)),"ghost glowable")}
-  fitPoster();drawer.scrollTop=0;
+  drawer.scrollTop=0;{const z=!/poster-none/.test(e.plakat);drawer.querySelector(".d-poster").classList.toggle("zoomable",z);$("#dZoom").hidden=!z}
   scrim.hidden=false;requestAnimationFrame(()=>{scrim.classList.add("on");drawer.classList.add("on")});
   drawer.setAttribute("aria-hidden","false");drawer.scrollTop=0;lenis&&lenis.stop();document.body.style.overflow="hidden";$("#dClose").focus();
 }
