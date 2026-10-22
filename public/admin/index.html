@@ -314,6 +314,11 @@ input{min-width:0}
         <div class="imp-row"><input class="txt" id="fOdk" type="url" inputmode="url" placeholder="Událost na Facebooku nebo příspěvek na Instagramu"><button class="btn light sm" type="button" id="impGo">Předvyplnit</button></div>
         <small style="color:var(--muted);font-size:13px" id="impHint">Vložte odkaz a klikněte na Předvyplnit. Plakát, datum a popis se doplní samy, vy už jen zkontrolujete a doplníte čas setu.</small>
         <div class="note" id="impNote" hidden></div>
+        <button class="linkish" type="button" id="impTxtShow">Nebo vložit text příspěvku</button>
+        <div class="f" id="impTxtBox" hidden>
+          <textarea id="impText" placeholder="Na Instagramu u příspěvku podržte prst na popisku → Kopírovat, a vložte ho sem."></textarea>
+          <button class="btn ghost sm" type="button" id="impTxtGo" style="justify-self:start">Předvyplnit z textu</button>
+        </div>
       </div>
 
       <div class="slab box">
@@ -566,21 +571,30 @@ $("#pFile").onchange=ev=>{const f=ev.target.files[0];if(!f)return;const u=URL.cr
   im.onerror=()=>toast("Tenhle obrázek se nepodařilo načíst",true);im.src=u};
 
 /* předvyplnění z odkazu */
-async function doImport(){const url=$("#fOdk").value.trim(),btn=$("#impGo"),note=$("#impNote");if(!url){$("#fOdk").focus();return}
-  btn.disabled=true;btn.innerHTML='<span class="spin"></span>Načítám';note.hidden=true;
-  try{const r=await api("admin/import",{method:"POST",body:JSON.stringify({url})}),got=[];
-    if(r.plakat&&!posterUrl){posterUrl=r.plakat;posterBlob=null;setPoster(posterUrl);got.push("plakát")}
-    if(r.datum&&!ed.datum){ed.datum=r.datum;showDate();got.push("datum")}
-    if(r.akce&&!$("#fAkce").value){$("#fAkce").value=r.akce;got.push("název")}
-    const t=norm(r.text||"");
-    if(!ed.misto){const club=[...lists.clubs.keys()].sort((a,b)=>b.length-a.length).find(c=>c.length>2&&t.includes(norm(c)));if(club){ed.misto=club;if(!ed.mesto)ed.mesto=lists.clubs.get(club)||"";got.push("klub")}}
-    if(!ed.mesto){const city=[...lists.cities].find(c=>t.includes(norm(c)));if(city){ed.mesto=city;got.push("město")}}
-    if(!ed.poradatel){const org=[...lists.orgs].sort((a,b)=>b.length-a.length).find(o=>o.length>2&&t.includes(norm(o)));if(org){ed.poradatel=org;got.push("pořadatel")}}
-    if(r.popis&&!$("#fPopis").value){$("#fPopis").value=r.popis;got.push("popis")}
-    placeUi();changed();note.className="note"+(got.length?"":" warn");
-    note.textContent=got.length?`Doplnil jsem: ${got.join(", ")}. Zkontrolujte to a doplňte čas svého setu.`:"Z odkazu se nepodařilo nic načíst (Instagram někdy obsah neukáže). Odkaz zůstane uložený, zbytek prosím vyplňte ručně.";note.hidden=false}
-  catch(e){if(e.message!=="auth"){note.className="note warn";note.textContent=e.message;note.hidden=false}}
+function applyImport(r){const got=[];
+  if(r.plakat&&!posterUrl){posterUrl=r.plakat;posterBlob=null;setPoster(posterUrl);got.push("plakát")}
+  if(r.datum&&!ed.datum){ed.datum=r.datum;showDate();got.push("datum")}
+  if(r.akce&&!$("#fAkce").value){$("#fAkce").value=r.akce;got.push("název")}
+  const t=norm(r.text||"");
+  if(!ed.misto){const club=[...lists.clubs.keys()].sort((a,b)=>b.length-a.length).find(c=>c.length>2&&t.includes(norm(c)));if(club){ed.misto=club;if(!ed.mesto)ed.mesto=lists.clubs.get(club)||"";got.push("klub")}}
+  if(!ed.mesto){const city=[...lists.cities].find(c=>t.includes(norm(c)));if(city){ed.mesto=city;got.push("město")}}
+  if(!ed.poradatel){const org=[...lists.orgs].sort((a,b)=>b.length-a.length).find(o=>o.length>2&&t.includes(norm(o)));if(org){ed.poradatel=org;got.push("pořadatel")}}
+  if(r.lineup&&lu.length<=1){const add=parseLu(r.lineup).filter(x=>!isMe(x.who));if(add.length){lu.push(...add);luRender();got.push("line-up")}}
+  if(r.popis&&!$("#fPopis").value){$("#fPopis").value=r.popis;got.push("popis")}
+  placeUi();changed();return got}
+function impMsg(got,fail){const note=$("#impNote");note.className="note"+(got.length?"":" warn");
+  note.textContent=got.length?`Doplnil jsem: ${got.join(", ")}. Zkontrolujte to a doplňte čas svého setu.`:fail;note.hidden=false}
+async function doImport(){const url=$("#fOdk").value.trim(),btn=$("#impGo");if(!url){$("#fOdk").focus();return}
+  btn.disabled=true;btn.innerHTML='<span class="spin"></span>Načítám';$("#impNote").hidden=true;
+  try{const r=await api("admin/import",{method:"POST",body:JSON.stringify({url})}),got=applyImport(r);
+    impMsg(got,"Instagram načtení ze serveru nepustil. Odkaz zůstane uložený. Zkopírujte text příspěvku a vložte ho níž, datum, klub a line-up se z něj vytáhnou. Plakát si uložte z Instagramu a nahrajte.");
+    if(!got.length){$("#impTxtBox").hidden=false;$("#impTxtShow").hidden=true}}
+  catch(e){if(e.message!=="auth")impMsg([],e.message)}
   finally{btn.disabled=false;btn.textContent="Předvyplnit"}}
+$("#impTxtShow").onclick=()=>{$("#impTxtBox").hidden=false;$("#impTxtShow").hidden=true;$("#impText").focus()};
+$("#impTxtGo").onclick=async()=>{const text=$("#impText").value.trim();if(!text){$("#impText").focus();return}
+  try{const r=await api("admin/import",{method:"POST",body:JSON.stringify({text})});impMsg(applyImport(r),"V textu jsem nenašel datum, klub ani line-up. Vyplňte prosím ručně.")}
+  catch(e){if(e.message!=="auth")impMsg([],e.message)}};
 $("#impGo").onclick=doImport;$("#fOdk").onkeydown=e=>{if(e.key==="Enter"){e.preventDefault();doImport()}};
 
 /* souhrn nahoře + náhled */
@@ -607,7 +621,7 @@ $("#pvOpen").onclick=()=>$("#pv").classList.add("show");$("#pvClose").onclick=()
 /* otevření / zavření */
 function edit(e,copy){cur=copy?null:(e||null);const x=e||{};
   ed={datum:copy?"":(x.datum||""),misto:x.misto||"",mesto:x.mesto||"",poradatel:x.poradatel||"",set_id:copy?"":(x.set_id||"")};
-  $("#fAkce").value=x.akce||"";$("#fVst").value=x.vstupenky||"";$("#fOdk").value=x.odkaz||"";$("#fPopis").value=x.popis||"";$("#impNote").hidden=true;
+  $("#fAkce").value=x.akce||"";$("#fVst").value=x.vstupenky||"";$("#fOdk").value=x.odkaz||"";$("#fPopis").value=x.popis||"";$("#impNote").hidden=true;$("#impText").value="";$("#impTxtBox").hidden=true;$("#impTxtShow").hidden=false;
   posterBlob=null;posterUrl=x.plakat||"";setPoster(posterUrl);$("#pFile").value="";
   lu=parseLu(x.lineup);me=lu.find(r=>isMe(r.who));if(!me){me={who:"ORBITH",od:"",do:""};lu.unshift(me)}
   const st=cur?(cur.status==="draft"?"draft":"live"):"new";$("#sPill").className="pill "+st;$("#sPill").textContent={draft:"Koncept",live:"Na webu",new:"Nová"}[st];

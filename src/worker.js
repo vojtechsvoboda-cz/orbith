@@ -101,7 +101,8 @@ async function route(req, env, ctx, url, p) {
   }
 
   if (p === "/api/admin/import" && m === "POST") {
-    const { url } = await req.json().catch(() => ({}));
+    const { url, text } = await req.json().catch(() => ({}));
+    if (text) return json(parseText(String(text).slice(0, 5000)));
     if (!/^https:\/\/(www\.|m\.|web\.)?(instagram\.com|facebook\.com|fb\.me)\//i.test(url || "")) return bad("Vložte odkaz na příspěvek z Instagramu nebo událost z Facebooku");
     return json(await importLink(env, url));
   }
@@ -234,6 +235,26 @@ async function importLink(env, url) {
     } catch (e) {}
   }
   out.found = ["datum", "akce", "plakat"].filter((k) => out[k]).concat(out.popis ? ["popis"] : []);
+  return out;
+}
+
+// text příspěvku vložený ručně: datum, line-up, popis
+function parseText(text) {
+  const out = { text, datum: guessDate(text) };
+  const tm = text.match(/\b(\d{1,2})[:.](\d{2})\s*[-–]\s*(\d{1,2})[:.](\d{2})\b/);
+  const lines = text.split(/\n+/).map((l) => l.trim()).filter(Boolean);
+  // line-up: řádky za slovem "line-up"/"lineup", nebo řádky s časem
+  let lu = [];
+  const li = lines.findIndex((l) => /line\s*-?\s*up/i.test(l));
+  if (li >= 0) {
+    const rest = lines[li].replace(/.*line\s*-?\s*up\s*:?/i, "").trim();
+    const src = rest ? [rest] : lines.slice(li + 1, li + 14);
+    for (const l of src) { if (/^#|https?:|vstup|ticket/i.test(l) || l.length > 60) break; lu.push(...l.split(/\s*(?:[,•|\/·]|\s[-–]\s|\s+b2b\s+(?=x)|&)\s*/i).filter(Boolean)); }
+  }
+  lu = lu.map((x) => x.replace(/^[^\w\u00C0-\u017F]+|[^\w\u00C0-\u017F)]+$/g, "").trim()).filter((x) => x.length > 1 && x.length < 40);
+  if (lu.length) out.lineup = lu.join("; ");
+  out.popis = text.replace(/#[\w\u00C0-\u017F]+/g, "").replace(/\n{3,}/g, "\n\n").trim().slice(0, 600);
+  out.found = ["datum"].filter((k) => out[k]).concat(lu.length ? ["lineup"] : []);
   return out;
 }
 
