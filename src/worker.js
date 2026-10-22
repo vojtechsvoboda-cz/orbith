@@ -4,7 +4,7 @@
 
 const COOKIE = "orbith_admin";
 const SESSION_DAYS = 90;
-const FIELDS = ["datum", "akce", "misto", "mesto", "poradatel", "plakat", "odkaz", "vstupenky", "lineup", "popis", "set_id"];
+const FIELDS = ["datum", "akce", "misto", "mesto", "poradatel", "plakat", "odkaz", "vstupenky", "lineup", "popis", "set_id", "status"];
 const MAX_POSTER = 1.5 * 1024 * 1024;
 
 const json = (data, status = 200, headers = {}) =>
@@ -37,7 +37,7 @@ async function route(req, env, ctx, url, p) {
 
   // ---------- veřejné ----------
   if (p === "/api/events" && m === "GET") {
-    const { results } = await env.DB.prepare(`SELECT id,${FIELDS.join(",")} FROM events WHERE datum<>'' ORDER BY datum DESC`).all();
+    const { results } = await env.DB.prepare(`SELECT id,${FIELDS.join(",")} FROM events WHERE datum<>'' AND (status IS NULL OR status<>'draft') ORDER BY datum DESC`).all();
     return json(results.map(pub), 200, { "cache-control": "public, max-age=30" });
   }
 
@@ -79,8 +79,10 @@ async function route(req, env, ctx, url, p) {
     const b = await req.json().catch(() => null);
     if (!b) return bad("Špatná data");
     const e = Object.fromEntries(FIELDS.map((k) => [k, clean(b[k], k === "popis" ? 4000 : 1000)]));
-    if (!e.akce) return bad("Doplňte název akce");
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(e.datum)) return bad("Doplňte datum");
+    e.status = e.status === "draft" ? "draft" : "published";
+    if (e.datum && !/^\d{4}-\d{2}-\d{2}$/.test(e.datum)) return bad("Špatný formát data");
+    if (e.status === "published" && !e.datum) return bad("Pro zveřejnění na webu doplňte datum");
+    if (!e.akce) e.akce = e.misto || "Orbith";
     const id = /^[\w-]{1,40}$/.test(b.id || "") ? b.id : uid();
     const old = await env.DB.prepare("SELECT plakat FROM events WHERE id=?").bind(id).first();
     await env.DB.prepare(
@@ -96,6 +98,12 @@ async function route(req, env, ctx, url, p) {
     await env.DB.prepare("DELETE FROM events WHERE id=?").bind(em[1]).run();
     if (old) await dropPoster(env, old.plakat);
     return json({ ok: true });
+  }
+
+  if (p === "/api/admin/import" && m === "POST") {
+    const { url } = await req.json().catch(() => ({}));
+    if (!/^https:\/\/(www\.|m\.|web\.)?(instagram\.com|facebook\.com|fb\.me)\//i.test(url || "")) return bad("Vložte odkaz na příspěvek z Instagramu nebo událost z Facebooku");
+    return json(await importLink(env, url));
   }
 
   if (p === "/api/admin/poster" && m === "POST") {
@@ -126,14 +134,79 @@ async function route(req, env, ctx, url, p) {
   return bad("Neznámá adresa", 404);
 }
 
+// ---------- předvyplnění z odkazu (Instagram / Facebook) ----------
+const MESICE = ["ledna", "února", "března", "dubna", "května", "června", "července", "srpna", "září", "října", "listopadu", "prosince"];
+const MONTHS_EN = ["january", "february", "march", "april", "may", "june", "july", "august", "september", "october", "november", "december"];
+function decodeEnt(s) {
+  return String(s || "").replace(/&#x([0-9a-f]+);/gi, (_, h) => String.fromCodePoint(parseInt(h, 16))).replace(/&#(\d+);/g, (_, d) => String.fromCodePoint(+d))
+    .replace(/&quot;/g, '"').replace(/&#039;|&apos;/g, "'").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&amp;/g, "&");
+}
+function meta(html, prop) {
+  const re = new RegExp(`<meta[^>]+(?:property|name)=["']${prop}["'][^>]*>`, "i"), tag = (html.match(re) || [])[0];
+  return tag ? decodeEnt((tag.match(/content=["']([^"']*)["']/i) || [])[1] || "") : "";
+}
+function guessDate(text, refYear) {
+  const now = new Date(), y0 = refYear || now.getFullYear();
+  const pick = (d, m, y) => {
+    if (!(d >= 1 && d <= 31 && m >= 1 && m <= 12)) return "";
+    let yy = y ? (y < 100 ? 2000 + y : y) : y0;
+    if (!y && new Date(yy, m - 1, d) < new Date(now.getFullYear(), now.getMonth(), now.getDate() - 60)) yy++;
+    return `${yy}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+  };
+  let r;
+  if ((r = text.match(/(\d{1,2})\.\s*(ledna|února|března|dubna|května|června|července|srpna|září|října|listopadu|prosince)(?:\s+(\d{4}))?/i))) return pick(+r[1], MESICE.indexOf(r[2].toLowerCase()) + 1, r[3] && +r[3]);
+  if ((r = text.match(/\b(\d{1,2})\.\s?(\d{1,2})\.(?:\s?(\d{4}|\d{2})\b)?/))) return pick(+r[1], +r[2], r[3] && +r[3]);
+  if ((r = text.match(/\b(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?\b/))) return pick(+r[1], +r[2], r[3] && +r[3]);
+  return "";
+}
+async function importLink(env, url) {
+  const out = { odkaz: url };
+  let html = "";
+  try {
+    const r = await fetch(url, { headers: { "user-agent": "facebookexternalhit/1.1 (+http://www.facebook.com/externalhit_uatext.php)", "accept-language": "cs,en;q=0.8" }, redirect: "follow" });
+    html = await r.text();
+  } catch (e) {}
+  const title = meta(html, "og:title"), desc = meta(html, "og:description") || meta(html, "description"), image = meta(html, "og:image");
+  // Instagram: 'X likes, Y comments - user on October 10, 2026: "popisek"'
+  let caption = desc, postYear = 0;
+  const ig = desc.match(/on ([A-Za-z]+) (\d{1,2}), (\d{4}):\s*"([\s\S]*)"/);
+  if (ig) { caption = ig[4]; postYear = +ig[3]; }
+  const igTitle = title.match(/on Instagram:\s*"([\s\S]*)"/);
+  if (!ig && igTitle) caption = igTitle[1];
+  const text = [title, caption].join("\n");
+  // Facebook událost: datum bývá ve strukturovaných datech
+  const ld = (html.match(/"startDate"\s*:\s*"(\d{4}-\d{2}-\d{2})/) || [])[1] || (html.match(/"start_timestamp"\s*:\s*(\d{9,})/) || [])[1];
+  if (ld) out.datum = /^\d{4}/.test(ld) ? ld : new Date(+ld * 1000).toISOString().slice(0, 10);
+  else out.datum = guessDate(text, postYear);
+  if (/facebook\.com/i.test(url) && title && !/^Facebook$|Log in|Přihlásit/i.test(title)) out.akce = title.trim();
+  out.popis = caption.replace(/#\w+/g, "").replace(/\s+\n/g, "\n").trim().slice(0, 600);
+  out.text = text;
+  if (image) {
+    try {
+      const r = await fetch(image, { headers: { "user-agent": "Mozilla/5.0" } });
+      const mime = (r.headers.get("content-type") || "").split(";")[0];
+      const buf = await r.arrayBuffer();
+      if (r.ok && /^image\/(jpeg|png|webp)$/.test(mime) && buf.byteLength < MAX_POSTER) {
+        const id = uid();
+        await env.DB.prepare("INSERT INTO posters (id,mime,data,created_at) VALUES (?,?,?,?)").bind(id, mime, buf, Date.now()).run();
+        out.plakat = `/api/poster/${id}`;
+      }
+    } catch (e) {}
+  }
+  out.found = ["datum", "akce", "plakat"].filter((k) => out[k]).concat(out.popis ? ["popis"] : []);
+  return out;
+}
+
 function pub(e) {
-  const { set_id, ...rest } = e;
+  const { set_id, status, ...rest } = e;
   return { ...rest, set: set_id || "" };
 }
 
 async function dropPoster(env, url) {
   const m = String(url || "").match(/^\/api\/poster\/([\w-]+)$/);
-  if (m) await env.DB.prepare("DELETE FROM posters WHERE id=?").bind(m[1]).run();
+  if (!m) return;
+  const used = await env.DB.prepare("SELECT COUNT(*) n FROM events WHERE plakat=?").bind(url).first();
+  if (!used || !used.n) await env.DB.prepare("DELETE FROM posters WHERE id=?").bind(m[1]).run();
 }
 
 // ---------- poptávka z webu ----------
