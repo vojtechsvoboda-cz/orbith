@@ -208,7 +208,25 @@ input{min-width:0}
 .prog{display:grid;gap:8px}
 .prog .tr{height:6px;border-radius:99px;background:rgba(160,195,255,.1);overflow:hidden}
 .prog .fl{height:100%;width:0;border-radius:99px;background:linear-gradient(90deg,var(--glow),#e9eefc);box-shadow:0 0 14px rgba(156,201,255,.7);transition:width .5s ease}
-.prog span{font-size:13.5px;color:var(--soft);display:flex;align-items:center;gap:8px}
+.isteps{list-style:none;margin:2px 0 0;padding:0;display:grid;gap:7px}
+.isteps li{display:flex;align-items:center;gap:10px;font-size:14px;color:var(--dim);transition:color .3s}
+.isteps li i{position:relative;width:16px;height:16px;border-radius:50%;border:1.5px solid currentColor;flex:none;transition:background .3s,border-color .3s}
+.isteps li.run{color:var(--ice)}
+.isteps li.run i{border-color:rgba(156,201,255,.25);border-top-color:var(--glow);animation:spin .8s linear infinite}
+.isteps li.ok{color:var(--soft)}
+.isteps li.ok i{background:var(--ok);border-color:var(--ok)}
+.isteps li.ok i::after{content:"";position:absolute;left:4.5px;top:1.5px;width:4px;height:8px;border:solid #05070d;border-width:0 2px 2px 0;transform:rotate(45deg)}
+.isteps li.err{color:var(--warn)}
+.isteps li.err i{border-color:var(--warn)}
+.isteps li.skip{display:none}
+/* skeleton: pole, která se právě předvyplňují */
+@keyframes shim{from{background-position:150% 0}to{background-position:-50% 0}}
+.skel{background-image:linear-gradient(100deg,transparent 30%,rgba(156,201,255,.18) 50%,transparent 70%)!important;background-size:250% 100%!important;background-repeat:no-repeat!important;animation:shim 1.3s linear infinite;color:transparent!important;border-color:var(--edge-hi)!important}
+.skel *{visibility:hidden}
+.skel::placeholder{color:transparent}
+.poster.skel{border-radius:12px}
+@keyframes fillflash{0%{box-shadow:0 0 0 2px var(--glow),0 0 26px rgba(156,201,255,.55)}100%{box-shadow:0 0 0 0 transparent,0 0 0 transparent}}
+.filled{animation:fillflash 1.6s ease-out}
 @media (max-width:1000px){.bar-in{grid-template-columns:minmax(0,1fr);gap:10px}.bar-r .pvb{display:inline-flex}.bar-r .btn.light{flex:1}}
 @media (max-width:520px){.bar{padding-inline:12px}.bar-r{gap:6px}.bar-r .btn{padding:10px 11px;font-size:9px;letter-spacing:.1em}.bar-r .pvb span{display:none}.bar-r .pvb{gap:0}}
 .more-acts{display:flex;gap:8px;flex-wrap:wrap;justify-content:space-between}
@@ -360,7 +378,15 @@ input{min-width:0}
         <h3>Odkaz na akci</h3>
         <div class="imp-row"><input class="txt" id="fOdk" type="url" inputmode="url" placeholder="Událost na Facebooku nebo příspěvek na Instagramu"><button class="btn light sm" type="button" id="impGo">Předvyplnit</button></div>
         <small style="color:var(--muted);font-size:13px" id="impHint">Vložte odkaz a klikněte na Předvyplnit. Plakát, datum a popis se doplní samy, vy už jen zkontrolujete a doplníte čas setu.</small>
-        <div class="prog" id="impProg" hidden><div class="tr"><div class="fl" id="impFill"></div></div><span id="impStep"></span></div>
+        <div class="prog" id="impProg" hidden>
+          <div class="tr"><div class="fl" id="impFill"></div></div>
+          <ol class="isteps" id="impSteps">
+            <li data-s="fetch"><i></i><span>Načítám příspěvek z Instagramu</span></li>
+            <li data-s="ai"><i></i><span>Čtu datum, místo a line-up</span></li>
+            <li data-s="poster"><i></i><span>Stahuji plakát</span></li>
+            <li data-s="fill"><i></i><span>Doplňuji formulář</span></li>
+          </ol>
+        </div>
         <div class="note" id="impNote" hidden></div>
         <button class="linkish" type="button" id="impTxtShow">Nebo vložit text příspěvku</button>
         <div class="f" id="impTxtBox" hidden>
@@ -414,6 +440,7 @@ input{min-width:0}
           <div class="f"><span class="lbl">Pořadatel</span><button class="pick" type="button" id="pPor"></button></div>
           <div class="f"><label class="lbl" for="fVst">Vstupenky</label><input class="txt" id="fVst" type="url" inputmode="url" placeholder="Odkaz na vstupenky"></div>
         </div>
+        <div class="f"><label class="lbl" for="fSet">Záznam setu na SoundCloudu</label><input class="txt" id="fSet" type="url" inputmode="url" placeholder="Odkaz na set, třeba soundcloud.com/ales_gehringer/…"><small>Po akci sem vložte odkaz na nahraný set. Na webu se u akce objeví „Pustit záznam setu“ a set přibude do seznamu v sekci Hudba.</small></div>
         <div class="f"><label class="lbl" for="fPopis">Popis</label><textarea id="fPopis" placeholder="Pár slov o akci"></textarea></div>
       </div>
 
@@ -574,7 +601,7 @@ function timeWheels(box,onChange){const st={oh:22,om:0,dh:0,dm:0};
       Object.assign(st,{oh:h1,om:snap(m1),dh:h2,dm:snap(m2)});draw()},get,sync(){}}}
 
 /* ---------- editor ---------- */
-let cur=null,ed={},lu=[],me=null,posterBlob=null,posterUrl="",blobUrl="",snap0="";
+let cur=null,ed={},lu=[],me=null,posterBlob=null,posterUrl="",blobUrl="",snap0="",posterData="";
 const Y0=new Date().getFullYear();
 /* datum: vlastní kalendář na rozkliknutí */
 const DAYS_F=["neděle","pondělí","úterý","středa","čtvrtek","pátek","sobota"];
@@ -653,13 +680,12 @@ $("#pFile").onchange=ev=>{const f=ev.target.files[0];if(f)usePosterFile(f).catch
 function usePosterFile(f){return new Promise((ok,ko)=>{const u=URL.createObjectURL(f),im=new Image();
   im.onload=()=>{const c=document.createElement("canvas"),s=Math.min(1,1100/Math.max(im.width,im.height));c.width=Math.round(im.width*s);c.height=Math.round(im.height*s);
     c.getContext("2d").drawImage(im,0,0,c.width,c.height);URL.revokeObjectURL(u);
-    c.toBlob(b=>{posterBlob=b;if(blobUrl)URL.revokeObjectURL(blobUrl);blobUrl=URL.createObjectURL(b);posterUrl="pending";setPoster(blobUrl);changed();ok()},"image/jpeg",.84)};
+    posterData=c.toDataURL("image/jpeg",.8);c.toBlob(b=>{posterBlob=b;if(blobUrl)URL.revokeObjectURL(blobUrl);blobUrl=URL.createObjectURL(b);posterUrl="pending";setPoster(blobUrl);changed();ok()},"image/jpeg",.84)};
   im.onerror=()=>{toast("Tenhle obrázek se nepodařilo načíst",true);ko()};im.src=u})}
 
 /* předvyplnění z odkazu */
 function knownLists(){return{clubs:[...lists.clubs].map(([c,m])=>m?`${c} (${m})`:c),cities:[...lists.cities],orgs:[...lists.orgs]}}
 function applyImport(r){const got=[];
-  posterP=null;if(r.plakatSrc&&!posterUrl){got.push("plakát");posterP=loadRemotePoster(r.plakatSrc)}
   if(r.datum&&!ed.datum){ed.datum=r.datum;showDate();got.push("datum")}
   if(r.akce&&!$("#fAkce").value){$("#fAkce").value=r.akce;got.push("název")}
   if(r.misto&&!ed.misto){const m=[...lists.clubs.keys()].find(c=>norm(c)===norm(r.misto))||r.misto;ed.misto=m;if(!ed.mesto&&lists.clubs.get(m))ed.mesto=lists.clubs.get(m);got.push("klub")}
@@ -677,30 +703,46 @@ function applyImport(r){const got=[];
   placeUi();changed();return got}
 function impMsg(got,fail){const note=$("#impNote");note.className="note"+(got.length?"":" warn");
   note.textContent=got.length?`Doplnil jsem: ${got.join(", ")}. Zkontrolujte to a doplňte čas svého setu.`:fail;note.hidden=false}
-/* průběh: odhad podle obvyklé délky (15 s), na konci doběhne do 100 % */
+/* průběh předvyplnění: kroky s ikonami, proužek a skeleton u polí, která se zrovna čtou */
 let posterP=null;
-function progStart(){const P=$("#impProg"),F=$("#impFill"),S=$("#impStep"),t0=Date.now();P.hidden=false;F.style.width="0";
-  const steps=[[0,"Stahuji příspěvek z Instagramu"],[5,"Čtu datum, místo a line-up"],[14,"Ještě chvilku, Instagram je dnes pomalejší"]];
-  const tick=()=>{const t=(Date.now()-t0)/1000;F.style.width=(92*(1-Math.exp(-t/8)))+"%";S.innerHTML='<span class="spin"></span>'+steps.filter(s=>t>=s[0]).pop()[1]+"…"};tick();
-  const iv=setInterval(tick,400);return{step(txt){clearInterval(iv);S.innerHTML='<span class="spin"></span>'+txt+"…";F.style.width="96%"},done(){clearInterval(iv);F.style.width="100%";setTimeout(()=>P.hidden=true,600)}}}
-async function doImport(){const url=$("#fOdk").value.trim(),btn=$("#impGo");if(!url){$("#fOdk").focus();return}
-  btn.disabled=true;$("#impNote").hidden=true;const pr=progStart();
-  try{const r=await api("admin/import",{method:"POST",body:JSON.stringify({url,known:knownLists()})}),got=applyImport(r);
-    if(posterP){pr.step("Stahuji plakát");await posterP}
-    impMsg(got,r.retry?"Instagram teď neodpověděl. Zkuste to prosím za minutu znovu, nebo vložte text příspěvku níž.":"Z odkazu se nepodařilo nic načíst. Zkontrolujte, že jde o odkaz na příspěvek, nebo vložte text příspěvku níž.");
-    if(!got.length){$("#impTxtBox").hidden=false;$("#impTxtShow").hidden=true}}
-  catch(e){if(e.message!=="auth")impMsg([],e.message)}
-  finally{pr.done();btn.disabled=false}}
+const W={fetch:[0,45],ai:[45,88],poster:[45,88],fill:[88,100]};
+function progUI(){const P=$("#impProg"),F=$("#impFill"),st={};P.hidden=false;F.style.width="0";
+  P.querySelectorAll("li").forEach(li=>li.className="");let run=null,t0=Date.now(),iv=setInterval(()=>{if(!run)return;const [a,b]=W[run],t=(Date.now()-t0)/1000;F.style.width=(a+(b-a)*.92*(1-Math.exp(-t/(run==="fetch"?7:4))))+"%"},300);
+  return{set(k,v){const li=P.querySelector(`[data-s="${k}"]`);li.className=v;st[k]=v;if(v==="run"){run=k;t0=Date.now()}else if(run===k){F.style.width=W[k][1]+"%";run=null}},
+    done(){clearInterval(iv);F.style.width="100%";setTimeout(()=>{P.hidden=true},1200)}}}
+const SK={datum:"#dPick",klub:"#pMisto",město:"#pMesto",pořadatel:"#pPor",název:"#fAkce",vstupenky:"#fVst","line-up":"#lu",popis:"#fPopis"};
+function skelOn(){const empty={datum:!ed.datum,klub:!ed.misto,město:!ed.mesto,pořadatel:!ed.poradatel,název:!$("#fAkce").value,vstupenky:!$("#fVst").value,"line-up":lu.length<=1,popis:!$("#fPopis").value};
+  Object.entries(SK).forEach(([k,sel])=>{if(empty[k])$(sel).classList.add("skel")})}
+async function skelReveal(got){for(const k of got){const el=SK[k]&&$(SK[k]);if(!el)continue;el.classList.remove("skel");el.classList.remove("filled");void el.offsetWidth;el.classList.add("filled");await new Promise(r=>setTimeout(r,140))}
+  Object.values(SK).forEach(sel=>$(sel).classList.remove("skel"))}
+async function runImport({url,text}){const btn=$("#impGo"),tbtn=$("#impTxtGo");btn.disabled=tbtn.disabled=true;$("#impNote").hidden=true;const pr=progUI();let got=[],fail="";
+  try{let src={text,taken:"",location:""};
+    if(url){pr.set("fetch","run");
+      const r=await api("admin/import",{method:"POST",body:JSON.stringify({url,step:"fetch"})});
+      if(!r.hasText&&!r.plakatSrc){pr.set("fetch","err");["ai","poster","fill"].forEach(k=>pr.set(k,"skip"));
+        fail=r.retry?"Instagram teď neodpověděl. Zkuste to prosím za minutu znovu, nebo vložte text příspěvku níž.":"Z odkazu se nepodařilo nic načíst. Zkontrolujte, že jde o odkaz na příspěvek, nebo vložte text příspěvku níž.";return}
+      pr.set("fetch","ok");src={text:r.text||"",taken:r.taken||"",location:r.location||""};
+      if(r.plakatSrc&&!posterUrl){pr.set("poster","run");$(".poster").classList.add("skel");
+        posterP=loadRemotePoster(r.plakatSrc).then(ok=>{pr.set("poster",ok?"ok":"err");$(".poster").classList.remove("skel");if(ok){const p=$(".poster");p.classList.remove("filled");void p.offsetWidth;p.classList.add("filled")}return ok});
+      }else{pr.set("poster","skip");posterP=null}
+    }else{pr.set("fetch","skip");pr.set("poster","skip");posterP=null}
+    if(src.text.trim()){pr.set("ai","run");skelOn();
+      let a;try{a=await api("admin/import",{method:"POST",body:JSON.stringify({text:src.text,taken:src.taken,location:src.location,known:knownLists()})})}catch(e){a={};if(e.message==="auth")throw e}
+      pr.set("ai","ok");pr.set("fill","run");got=applyImport(a);await skelReveal(got);pr.set("fill","ok")}
+    else{pr.set("ai","skip");pr.set("fill","skip")}
+    if(posterP&&await posterP)got.unshift("plakát");
+    fail=url?"Z příspěvku se nepodařilo nic vyčíst. Vyplňte prosím ručně.":"V textu jsem nenašel datum, klub ani line-up. Vyplňte prosím ručně."}
+  catch(e){if(e.message!=="auth")fail=e.message;$("#impProg li.run")&&$("#impProg li.run").classList.replace("run","err");Object.values(SK).forEach(sel=>$(sel).classList.remove("skel"))}
+  finally{pr.done();btn.disabled=tbtn.disabled=false;impMsg(got,fail);if(url&&!got.length){$("#impTxtBox").hidden=false;$("#impTxtShow").hidden=true}}}
+function doImport(){const url=$("#fOdk").value.trim();if(!url){$("#fOdk").focus();return}runImport({url})}
 $("#impTxtShow").onclick=()=>{$("#impTxtBox").hidden=false;$("#impTxtShow").hidden=true;$("#impText").focus()};
-$("#impTxtGo").onclick=async()=>{const text=$("#impText").value.trim();if(!text){$("#impText").focus();return}
-  try{const r=await api("admin/import",{method:"POST",body:JSON.stringify({text,known:knownLists()})});impMsg(applyImport(r),"V textu jsem nenašel datum, klub ani line-up. Vyplňte prosím ručně.")}
-  catch(e){if(e.message!=="auth")impMsg([],e.message)}};
+$("#impTxtGo").onclick=()=>{const text=$("#impText").value.trim();if(!text){$("#impText").focus();return}runImport({text})};
 function grow(el){el.style.height="auto";el.style.height=Math.min(el.scrollHeight+2,window.innerHeight*.7)+"px"}
 ["impText","fPopis"].forEach(id=>{const el=$("#"+id);el.addEventListener("input",()=>grow(el));el.addEventListener("paste",()=>setTimeout(()=>grow(el),0))});
 $("#impGo").onclick=doImport;$("#fOdk").onkeydown=e=>{if(e.key==="Enter"){e.preventDefault();doImport()}};
 
 /* souhrn nahoře + náhled */
-function collect(){return{...(cur||{}),...ed,akce:$("#fAkce").value.trim(),vstupenky:$("#fVst").value.trim(),odkaz:$("#fOdk").value.trim(),popis:$("#fPopis").value.trim(),lineup:serLu(lu)}}
+function collect(){return{...(cur||{}),...ed,akce:$("#fAkce").value.trim(),vstupenky:$("#fVst").value.trim(),odkaz:$("#fOdk").value.trim(),popis:$("#fPopis").value.trim(),set_id:$("#fSet").value.trim(),lineup:serLu(lu)}}
 const fmtShort=iso=>{const d=new Date(iso+"T12:00");return`${D[d.getDay()]} ${d.getDate()}. ${d.getMonth()+1}.`};
 function changed(){const e=collect(),row=[];requestAnimationFrame(()=>{grow($("#fPopis"));grow($("#impText"))});
   $("#sTitle").textContent=e.akce||e.misto||(cur?"Akce":"Nová akce");
@@ -708,7 +750,23 @@ function changed(){const e=collect(),row=[];requestAnimationFrame(()=>{grow($("#
   row.push(me.od?`<span>${me.od}–${me.do}</span>`:`<span class="miss">bez času</span>`);
   if(e.mesto||e.misto)row.push(`<span>${esc([e.misto,e.mesto].filter(Boolean).join(", "))}</span>`);
   if(!(posterUrl))row.push(`<span class="miss">bez plakátu</span>`);
-  $("#sRow").innerHTML=row.join("");prevRender(e)}
+  $("#sRow").innerHTML=row.join("");prevRender(e);autosave()}
+/* rozpracovaná akce se průběžně ukládá v prohlížeči, takže ji neztratí obnovení stránky ani zavřený prohlížeč */
+const AS_KEY="orbith_rozpracovano";let asT=0;
+function autosaveNow(){try{if($("#sheet").hidden||!snap0)return;if(!dirty()){localStorage.removeItem(AS_KEY);return}
+  localStorage.setItem(AS_KEY,JSON.stringify({id:cur?cur.id:null,data:collect(),lu,mi:lu.indexOf(me),posterUrl:posterUrl==="pending"?"":posterUrl,posterData:posterUrl==="pending"?posterData:"",ts:Date.now()}))}catch(e){}}
+function autosave(){clearTimeout(asT);asT=setTimeout(autosaveNow,400)}
+function asClear(){clearTimeout(asT);try{localStorage.removeItem(AS_KEY)}catch(e){}}
+addEventListener("beforeunload",autosaveNow);addEventListener("pagehide",autosaveNow);
+async function asRestore(){let a=null;try{a=JSON.parse(localStorage.getItem(AS_KEY)||"null")}catch(e){}
+  if(!a||!a.data||Date.now()-a.ts>30*864e5)return;
+  const base=a.id?events.find(e=>e.id===a.id):null;if(a.id&&!base){asClear();return}
+  edit(base||null);const d=a.data;
+  ed={datum:d.datum||"",misto:d.misto||"",mesto:d.mesto||"",poradatel:d.poradatel||""};
+  $("#fAkce").value=d.akce||"";$("#fVst").value=d.vstupenky||"";$("#fOdk").value=d.odkaz||"";$("#fPopis").value=d.popis||"";$("#fSet").value=d.set_id||"";
+  lu=Array.isArray(a.lu)&&a.lu.length?a.lu:lu;me=lu[a.mi]||lu.find(r=>isMe(r.who));if(!me){me={who:"ORBITH",od:"",do:""};lu.unshift(me)}
+  if(a.posterData){try{await usePosterFile(await (await fetch(a.posterData)).blob())}catch(e){}}else{posterBlob=null;posterUrl=a.posterUrl||"";setPoster(posterUrl)}
+  showDate();showTime();luRender();placeUi();changed();toast("Obnovil jsem rozpracovanou akci, nic se neztratilo")}
 function prevRender(e){const pst=img(posterUrl==="pending"?blobUrl:posterUrl),d=e.datum?new Date(e.datum+"T12:00"):null,L=parseLu(e.lineup),timed=L.filter(x=>x.od);
   const DAYS=["neděle","pondělí","úterý","středa","čtvrtek","pátek","sobota"];
   $("#pvd").innerHTML=`<div class="pp"><div class="bg" style="background-image:url('${esc(pst)}')"></div><img src="${esc(pst)}" alt=""></div>
@@ -717,14 +775,14 @@ function prevRender(e){const pst=img(posterUrl==="pending"?blobUrl:posterUrl),d=
   ${L.length?`<div><span class="lbl" style="display:block;margin-bottom:10px">Line-up</span>${timed.length?`<div class="sch">${L.map(x=>`<div class="${isMe(x.who)?"me":""}"><span>${x.od?x.od+"–"+x.do:"—"}</span><b>${esc(x.who)}</b></div>`).join("")}</div>`:`<div class="lup">${L.map(x=>`<span class="${isMe(x.who)?"me":""}">${esc(x.who)}</span>`).join("")}</div>`}</div>`:""}
   ${(e.poradatel||e.popis)?`<p>${esc((e.poradatel?"Pořádá "+e.poradatel+". ":"")+(e.popis||""))}</p>`:""}
   <div class="acts">${e.vstupenky?'<span class="light">Vstupenky</span>':""}${e.odkaz?"<span>Na Instagramu</span>":""}${e.misto?"<span>Navigovat</span>":""}</div></div>`}
-["fAkce","fVst","fPopis","fOdk"].forEach(id=>$("#"+id).addEventListener("input",()=>changed()));
+["fAkce","fVst","fPopis","fOdk","fSet"].forEach(id=>$("#"+id).addEventListener("input",()=>changed()));
 $("#pvOpen").onclick=()=>$("#pv").classList.add("show");$("#pvClose").onclick=()=>$("#pv").classList.remove("show");
 
 /* otevření / zavření */
 function edit(e,copy){cur=copy?null:(e||null);const x=e||{};
   ed={datum:copy?"":(x.datum||""),misto:x.misto||"",mesto:x.mesto||"",poradatel:x.poradatel||"",set_id:copy?"":(x.set_id||"")};
-  $("#fAkce").value=x.akce||"";$("#fVst").value=x.vstupenky||"";$("#fOdk").value=x.odkaz||"";$("#fPopis").value=x.popis||"";$("#impNote").hidden=true;$("#impText").value="";$("#impTxtBox").hidden=true;$("#impTxtShow").hidden=false;
-  posterBlob=null;posterUrl=x.plakat||"";setPoster(posterUrl);$("#pFile").value="";
+  $("#fAkce").value=x.akce||"";$("#fVst").value=x.vstupenky||"";$("#fOdk").value=x.odkaz||"";$("#fPopis").value=x.popis||"";$("#fSet").value=copy?"":(x.set_id?(/^\d+$/.test(x.set_id)?"https://api.soundcloud.com/tracks/"+x.set_id:x.set_id):"");$("#impNote").hidden=true;$("#impProg").hidden=true;$("#impText").value="";$("#impTxtBox").hidden=true;$("#impTxtShow").hidden=false;
+  posterBlob=null;posterData="";posterUrl=x.plakat||"";setPoster(posterUrl);$("#pFile").value="";snap0="";
   lu=parseLu(x.lineup);me=lu.find(r=>isMe(r.who));if(!me){me={who:"ORBITH",od:"",do:""};lu.unshift(me)}
   const st=cur?(cur.status==="draft"?"draft":"live"):"new";$("#sPill").className="pill "+st;$("#sPill").textContent={draft:"Koncept",live:"Na webu",new:"Nová"}[st];
   $("#publish").textContent=st==="live"?"Uložit na web":"Publikovat na web";$("#saveDraft").textContent=st==="live"?"Stáhnout do konceptu":"Uložit koncept";
@@ -734,7 +792,7 @@ function edit(e,copy){cur=copy?null:(e||null);const x=e||{};
   if(copy)toast("Kopie akce: zvolte nové datum")}
 function dirty(){return JSON.stringify([collect(),posterUrl])!==snap0}
 function close(force){if(!force&&dirty()){resetDrop();$("#mLeave").hidden=false;setTimeout(()=>$("#lvPub").focus(),50);return}
-  $("#mLeave").hidden=true;$("#sheet").hidden=true;document.body.style.overflow=""}
+  if(force)asClear();$("#mLeave").hidden=true;$("#sheet").hidden=true;document.body.style.overflow="";snap0=""}
 $("#lvPub").onclick=()=>{$("#mLeave").hidden=true;save("published")};
 $("#lvDraft").onclick=()=>{$("#mLeave").hidden=true;save("draft")};
 /* zahození: napřed se tlačítko posune a zprava přijede potvrzení */
@@ -782,7 +840,7 @@ async function start(){
   const me=await api("admin/me");
   $("#inqInfo").textContent=me.mail?"Poptávky z formuláře na webu. Každá zároveň přijde e-mailem.":"Poptávky z formuláře na webu.";
   await Promise.all([loadEvents(),loadInq()]);
-  $("#boot").hidden=true;$("#login").hidden=true;$("#app").hidden=false;tab("ev")}
+  $("#boot").hidden=true;$("#login").hidden=true;$("#app").hidden=false;tab("ev");asRestore()}
 start().catch(e=>{if(e.message!=="auth"){$("#boot").textContent="Administraci se nepodařilo načíst. Zkuste obnovit stránku."}});
 addEventListener("resize",()=>{if(!$("#app").hidden)tab(tabs.querySelector('[aria-pressed="true"]').dataset.t)});
 document.fonts&&document.fonts.ready.then(()=>{if(!$("#app").hidden)tab(tabs.querySelector('[aria-pressed="true"]').dataset.t)});

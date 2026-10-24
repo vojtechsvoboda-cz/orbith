@@ -101,13 +101,16 @@ async function route(req, env, ctx, url, p) {
   }
 
   if (p === "/api/admin/import" && m === "POST") {
-    const { url, text, known } = await req.json().catch(() => ({}));
+    // step "fetch" = jen stáhnout příspěvek, text pak zvlášť přečte AI (kvůli průběhu v administraci)
+    const { url, text, known, step, taken, location } = await req.json().catch(() => ({}));
     if (text) {
       const t = String(text).normalize("NFKC").slice(0, 5000);
-      return json(await withAI(env, parseText(t), t, { known }));
+      const base = parseText(t);
+      if (taken) { const y = new Date(taken).getFullYear(); if (y) base.datum = guessDate(t, y) || base.datum; }
+      return json(await withAI(env, base, t, { known, taken, location }));
     }
     if (!/^https:\/\/(www\.|m\.|web\.)?(instagram\.com|facebook\.com|fb\.me)\//i.test(url || "")) return bad("Vložte odkaz na příspěvek z Instagramu nebo událost z Facebooku");
-    return json(await importLink(env, url, known));
+    return json(await importLink(env, url, known, step === "fetch"));
   }
 
   if (p === "/api/admin/img" && m === "GET") {
@@ -204,7 +207,7 @@ async function apifyPost(env, code, dbg) {
   } catch (e) { dbg.push("apify chyba " + String(e).slice(0, 60)); return null; }
 }
 
-async function importLink(env, url, known) {
+async function importLink(env, url, known, fetchOnly) {
   const out = { odkaz: url }, dbg = [];
   const nf = (x) => String(x || "").normalize("NFKC"); // tučné „𝗗𝗶𝗺𝗲𝗻𝘀𝗶𝗼𝗻“ z Instagramu → běžné písmo
   const code =(url.match(/instagram\.com\/(?:[\w.]+\/)?(?:p|reel|tv)\/([\w-]+)/i) || [])[1];
@@ -269,6 +272,7 @@ async function importLink(env, url, known) {
   // plakát stáhne a zmenší až prohlížeč přes /api/admin/img (originály z Instagramu bývají přes limit databáze)
   if (image) out.plakatSrc = image;
   out.found = ["datum", "akce", "plakatSrc"].filter((k) => out[k]).concat(out.popis ? ["popis"] : []);
+  if (fetchOnly) return { ...out, taken, location, hasText: !!(caption || title) };
   return caption || title ? withAI(env, out, text, { known, taken, location }) : out;
 }
 

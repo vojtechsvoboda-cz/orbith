@@ -288,7 +288,7 @@ section{scroll-margin-top:90px}
   .sets.short .item:nth-child(n+6){display:none}
   .more-sets{display:inline-flex;justify-self:center;margin-top:6px}}
 .spot{max-width:760px;display:grid;gap:14px}
-.spot iframe{width:100%;height:352px;border:0;border-radius:16px;display:block}
+.spot iframe{width:100%;height:440px;border:0;border-radius:16px;display:block}
 .fallback{padding:28px;display:grid;gap:14px;justify-items:start;border-radius:22px}
 .fallback p{color:var(--muted);max-width:52ch}
 .videa{display:grid;grid-template-columns:minmax(0,auto) minmax(0,1fr);gap:clamp(24px,4vw,56px);align-items:start}
@@ -804,7 +804,7 @@ const whereOf=e=>[e.misto,e.mesto].filter((v,i,a)=>v&&a.indexOf(v)===i).join(", 
 const dot=d=>`${d.getDate()}. ${d.getMonth()+1}.`;
 const clock=sec=>{sec=Math.max(0,Math.round(sec));const h=Math.floor(sec/3600),m=Math.floor(sec%3600/60),s=sec%60;return (h?h+":"+String(m).padStart(2,"0"):m)+":"+String(s).padStart(2,"0")};
 const EQ=`<span class="eq" aria-hidden="true"><i></i><i></i><i></i></span>`;
-const dur=ms=>{const m=Math.round(ms/60000);return m<60?`${m} min`:`${Math.floor(m/60)} h ${String(m%60).padStart(2,"0")} min`};
+const dur=ms=>{if(!ms)return"";const m=Math.round(ms/60000);return m<60?`${m} min`:`${Math.floor(m/60)} h ${String(m%60).padStart(2,"0")} min`};
 const lineupOf=e=>(e.lineup||"").split(";").map(s=>s.trim()).filter(Boolean).map(s=>{const m=s.match(/^(.*?)\s+(\d{1,2}:\d{2})\s*-\s*(\d{1,2}:\d{2})$/);return m?{who:m[1],od:m[2],do:m[3]}:{who:s,od:"",do:""}});
 /* Orbith's own set time: column "cas" ("23:00-01:00") or his line in the line-up */
 function setLen(t){const m=s=>{const[a,b]=s.split(":").map(Number);return a*60+b};let d=m(t.do)-m(t.od);if(d<=0)d+=1440;const h=Math.floor(d/60),r=d%60;return (h?h+" h":"")+(r?" "+r+" min":"")+" set"}
@@ -992,13 +992,18 @@ const embedCheck=new Promise(res=>{const s=document.createElement("script");s.sr
 
 /* ===== SoundCloud ===== */
 const setsEl=$("#sets"),nowEl=$("#now");let cs=0,scWidget=null,scPos=0,scPlaying=false;
-SETS.forEach((s,i)=>{const b=document.createElement("button");b.type="button";b.className="item glowable";
+/* sety: pevný seznam + záznamy, které Aleš přidá k akcím v administraci */
+function addEventSets(){const known=new Set(SETS.map(s=>s.id)),extra=EVENTS.filter(e=>e.set&&!known.has(e.set)).sort((a,b)=>a.datum<b.datum?1:-1)
+  .map(e=>({id:e.set,img:e.plakat,t:e.akce,s:e.mesto||e.misto||"",d:dot(dOf(e))+" "+dOf(e).getFullYear(),ms:0}));
+  SETS.unshift(...extra)}
+function buildSets(){setsEl.innerHTML="";SETS.forEach((s,i)=>{const b=document.createElement("button");b.type="button";b.className="item glowable";
   b.innerHTML=`<span class="th"><img src="${s.img}" alt=""><span class="pb">${svg("i-play")}</span></span><span class="rt"><b>${esc(s.t)}</b><small>${esc(s.s)} · ${esc(s.d)}</small></span><span class="st"></span><span class="pg"><i></i></span>`;
-  b.onclick=()=>{if(i===cs&&scWidget){scWidget.toggle();return}pickSet(i,true)};setsEl.appendChild(b)});
+  b.onclick=()=>{if(i===cs&&scWidget){scWidget.toggle();return}pickSet(i,true)};setsEl.appendChild(b)});setsFade()}
+const scPage=s=>s.u?`https://soundcloud.com/ales_gehringer/${s.u}`:/^https?:/.test(s.id)?s.id:SC_PROFILE;
 function setsFade(){const t=setsEl.scrollTop,m=setsEl.scrollHeight-setsEl.clientHeight;setsEl.classList.toggle("all",m<4);setsEl.classList.toggle("mid",t>8&&t<m-8);setsEl.classList.toggle("end",m>=4&&t>=m-8)}
 setsEl.addEventListener("scroll",()=>requestAnimationFrame(setsFade),{passive:true});
 $("#moreSets").onclick=e=>{const sh=setsEl.classList.toggle("short");e.currentTarget.textContent=sh?"Zobrazit všechny sety":"Zobrazit méně"};addEventListener("resize",setsFade);
-function scUrl(s){return `https://api.soundcloud.com/tracks/${s.id}`}
+function scUrl(s){return /^\d+$/.test(s.id)?`https://api.soundcloud.com/tracks/${s.id}`:s.id}
 function scSrc(s,auto){return "https://w.soundcloud.com/player/?url="+encodeURIComponent(scUrl(s))+"&color=%239cc9ff&auto_play="+(auto?"true":"false")+"&hide_related=true&show_comments=false&show_user=true&show_reposts=false&show_teaser=false&visual=true"}
 function markSets(){setsEl.querySelectorAll(".item").forEach((b,j)=>{const on=j===cs;b.classList.toggle("on",on);b.classList.toggle("playing",on&&scPlaying);
   b.querySelector(".st").innerHTML=on&&scPlaying?EQ+clock(scPos/1000):on&&scPos>0?clock(scPos/1000):dur(SETS[j].ms);
@@ -1006,16 +1011,16 @@ function markSets(){setsEl.querySelectorAll(".item").forEach((b,j)=>{const on=j=
   if(!on)b.querySelector(".pg i").style.width="0"})}
 function renderNow(auto){const s=SETS[cs];
   if(canEmbed){
-    if(!scWidget){nowEl.innerHTML=`<div class="frame"><iframe id="scf" allow="autoplay" title="SoundCloud přehrávač" src="${scSrc(s,auto)}"></iframe></div><div class="meta"><span class="lbl">${esc(s.d)} · ${dur(s.ms)}</span><a class="btn ghost glowable" href="https://soundcloud.com/ales_gehringer/${s.u}" target="_blank" rel="noopener">${svg("i-sc")}Otevřít na SoundCloudu</a></div>`;
+    if(!scWidget){nowEl.innerHTML=`<div class="frame"><iframe id="scf" allow="autoplay" title="SoundCloud přehrávač" src="${scSrc(s,auto)}"></iframe></div><div class="meta"><span class="lbl">${esc(s.d)}${s.ms?" · "+dur(s.ms):""}</span><a class="btn ghost glowable" href="${scPage(s)}" target="_blank" rel="noopener">${svg("i-sc")}Otevřít na SoundCloudu</a></div>`;
       scWidget=SC.Widget($("#scf"));const E=SC.Widget.Events;
       scWidget.bind(E.PLAY,()=>{scPlaying=true;markSets()});scWidget.bind(E.PAUSE,()=>{scPlaying=false;markSets()});
       scWidget.bind(E.PLAY_PROGRESS,p=>{scPos=p.currentPosition;scProgress(p.relativePosition)});
       scWidget.bind(E.FINISH,()=>pickSet((cs+1)%SETS.length,true));
     }else{scWidget.load(scUrl(s),{auto_play:!!auto,color:"#9cc9ff",visual:true,show_comments:false,hide_related:true,show_teaser:false,show_reposts:false});
-      nowEl.querySelector(".meta").innerHTML=`<span class="lbl">${esc(s.d)} · ${dur(s.ms)}</span><a class="btn ghost glowable" href="https://soundcloud.com/ales_gehringer/${s.u}" target="_blank" rel="noopener">${svg("i-sc")}Otevřít na SoundCloudu</a>`}
+      nowEl.querySelector(".meta").innerHTML=`<span class="lbl">${esc(s.d)}${s.ms?" · "+dur(s.ms):""}</span><a class="btn ghost glowable" href="${scPage(s)}" target="_blank" rel="noopener">${svg("i-sc")}Otevřít na SoundCloudu</a>`}
   }else{
-    nowEl.innerHTML=`<div class="art"><img src="${s.img}" alt=""><div class="cap"><b>${esc(s.t)}</b><span>${esc(s.s)} · ${esc(s.d)} · ${dur(s.ms)}</span></div></div>
-      <div class="meta"><a class="btn light" href="https://soundcloud.com/ales_gehringer/${s.u}" target="_blank" rel="noopener">${svg("i-play")}Poslechnout na SoundCloudu</a><span class="note">Přehrávač SoundCloudu se v náhledu nenačte, na webu hraje přímo tady.</span></div>`}
+    nowEl.innerHTML=`<div class="art"><img src="${s.img}" alt=""><div class="cap"><b>${esc(s.t)}</b><span>${esc(s.s)} · ${esc(s.d)}${s.ms?" · "+dur(s.ms):""}</span></div></div>
+      <div class="meta"><a class="btn light" href="${scPage(s)}" target="_blank" rel="noopener">${svg("i-play")}Poslechnout na SoundCloudu</a><span class="note">Přehrávač SoundCloudu se v náhledu nenačte, na webu hraje přímo tady.</span></div>`}
   markSets()}
 let scSec=-1;
 function scProgress(rel){const b=setsEl.children[cs];if(!b)return;b.querySelector(".pg i").style.width=(rel*100)+"%";
@@ -1096,7 +1101,7 @@ function pick(k){F.type=k;const s=SVC.find(x=>x.k===k);types.querySelectorAll(".
 
 /* wheel date picker */
 const wD=$("#wD"),wM=$("#wM"),wY=$("#wY");const IH=44;
-const base=new Date(today().getTime()+21*864e5);
+const base=new Date(today().getTime()+14*864e5);
 const sel={d:base.getDate(),m:base.getMonth(),y:base.getFullYear()};
 const Y0=today().getFullYear();
 let wLock=false;
@@ -1146,6 +1151,7 @@ function parseCSV(t){const rows=[];let r=[],f="",q=false;for(let i=0;i<t.length;
     if(r.ok){const d=await r.json();if(Array.isArray(d)&&d.length){EVENTS.length=0;EVENTS.push(...d)}}}catch(e){}
   if(SHEET_CSV_URL){try{const r=await fetch(SHEET_CSV_URL,{cache:"no-store"});if(r.ok){const rows=parseCSV(await r.text());if(rows.length){EVENTS.length=0;EVENTS.push(...rows)}}}catch(e){}}
   EVENTS.forEach(e=>{if(!e.plakat)e.plakat="poster-none.svg"});
+  addEventSets();buildSets();
   renderRail();renderList();pick("club");renderGuests();initWheels();pickSet(0,false);spy();
   const re=()=>{slideSeg(when,false);slideSeg(lenEl,false);slideSeg(mtab,false);if(spyOn)slide(pillsBox,pills.find(p=>p.dataset.s===spyOn),false);railArrows()};
   slideSeg(mtab,false);
